@@ -3,10 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using GanadoProBackEnd.Data;
 using GanadoProBackEnd.Models;
 using GanadoProBackEnd.DTOs;
-
 using System.ComponentModel.DataAnnotations;
-// Ensure that RanchoResponseDto is defined in GanadoProBackEnd.DTOs namespace.
-// If not, create the RanchoResponseDto class in the DTOs folder as shown below.
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -38,11 +35,12 @@ namespace GanadoProBackEnd.Controllers
                     CapacidadMaxima = r.CapacidadMaxima,
                     Id_User = r.Id_User,
                     TotalCorrales = r.Corrales.Count,
-                    TotalLotes = r.Corrales.Sum(c => c.Lotes.Count), // Lotes de todos los corrales
+                    TotalLotes = r.Corrales.Sum(c => c.Lotes.Count),
                     Corrales = r.Corrales.Select(c => new CorralInfoDto
                     {
                         Id_Corral = c.Id_Corrales,
                         NombreCorral = c.NombreCorral,
+                        Estado = c.Estado,
                         TotalLotes = c.Lotes.Count
                     }).ToList()
                 })
@@ -78,9 +76,29 @@ namespace GanadoProBackEnd.Controllers
                 {
                     Id_Corral = c.Id_Corrales,
                     NombreCorral = c.NombreCorral,
+                    Estado = c.Estado,
                     TotalLotes = c.Lotes.Count
                 }).ToList()
             };
+        }
+
+        // GET: api/Ranchos/5/corrales
+        [HttpGet("{id}/corrales")]
+        public async Task<ActionResult<IEnumerable<CorralInfoDto>>> GetCorralesPorRancho(int id)
+        {
+            var rancho = await _context.Ranchos
+                .Include(r => r.Corrales)
+                .FirstOrDefaultAsync(r => r.Id_Rancho == id);
+
+            if (rancho == null) return NotFound();
+
+            return rancho.Corrales.Select(c => new CorralInfoDto
+            {
+                Id_Corral = c.Id_Corrales,
+                NombreCorral = c.NombreCorral,
+                Estado = c.Estado,
+                TotalLotes = c.Lotes.Count
+            }).ToList();
         }
 
         // POST: api/Ranchos
@@ -118,6 +136,7 @@ namespace GanadoProBackEnd.Controllers
                 TipoGanado = rancho.TipoGanado,
                 CapacidadMaxima = rancho.CapacidadMaxima,
                 Id_User = rancho.Id_User,
+                TotalCorrales = 0,
                 TotalLotes = 0
             });
         }
@@ -154,7 +173,7 @@ namespace GanadoProBackEnd.Controllers
                 .FirstOrDefaultAsync(r => r.Id_Rancho == id);
 
             if (rancho == null) return NotFound();
-            if (rancho.Corrales.Any()) return BadRequest("No se puede eliminar un rancho con lotes asociados");
+            if (rancho.Corrales.Any()) return BadRequest("No se puede eliminar un rancho con corrales asociados");
 
             _context.Ranchos.Remove(rancho);
             await _context.SaveChangesAsync();
@@ -162,6 +181,8 @@ namespace GanadoProBackEnd.Controllers
             return NoContent();
         }
     }
+
+    // ======= DTOs =======
     public class RanchoResponseDto
     {
         public int Id_Rancho { get; set; }
@@ -178,11 +199,12 @@ namespace GanadoProBackEnd.Controllers
         public List<CorralInfoDto> Corrales { get; set; }
     }
 
-    public class LoteInfoDto
+    public class CorralInfoDto
     {
-        public int Id_Lote { get; set; }
-        public string Nombre { get; set; }
-        public DateTime FechaEntrada { get; set; }
+        public int Id_Corral { get; set; }
+        public string NombreCorral { get; set; }
+        public string Estado { get; set; }
+        public int TotalLotes { get; set; }
     }
 
     public class CreateRanchoDto
@@ -223,11 +245,4 @@ namespace GanadoProBackEnd.Controllers
         public string? TipoGanado { get; set; }
         public int? CapacidadMaxima { get; set; }
     }
-    public class CorralInfoDto
-    {
-        public int Id_Corral { get; set; }
-        public string NombreCorral { get; set; }
-        public int TotalLotes { get; set; }
-    }
 }
-    

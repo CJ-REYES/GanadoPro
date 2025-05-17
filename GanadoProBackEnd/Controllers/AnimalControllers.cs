@@ -50,7 +50,29 @@ namespace GanadoProBackEnd.Controllers
                 Id_Lote = animal.Id_Lote
             };
         }
-
+[HttpGet("comprados")]
+public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesComprados()
+{
+    return Ok(await _context.Animales
+        .Where(a => a.Origen == "Comprado")
+        .Include(a => a.Lote)
+        .Select(a => new AnimalResponseDto 
+        {
+            Id_Animal = a.Id_Animal,
+            Arete = a.Arete,
+            Peso = a.Peso,
+            Sexo = a.Sexo,
+            Clasificacion = a.Clasificacion,
+            Categoria = a.Categoria,
+            Raza = a.Raza,
+            Edad_Meses = a.Edad_Meses,
+            Fecha_Registro = a.Fecha_Registro,
+            Id_Lote = a.Id_Lote,
+            Origen = a.Origen,
+            FechaCompra = a.FechaCompra
+        })
+        .ToListAsync());
+}
 // POST: api/Animales
 [HttpPost]
 public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] CreateAnimalDto animalDto)

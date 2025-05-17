@@ -4,7 +4,13 @@ using GanadoProBackEnd.DTOs;
 namespace GanadoProBackEnd.DTOs
 {
     // Para crear un lote
-   // CreateLoteDto
+    // CreateLoteDto
+    public class LoteInfoDto
+    {
+        public int Id_Lote { get; set; }
+        public DateTime FechaEntrada { get; set; }
+        // Añadir más propiedades si son necesarias
+    }
 public class CreateLoteDto
     {
         [Required]
