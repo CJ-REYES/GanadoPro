@@ -19,7 +19,7 @@ namespace GanadoProBackEnd.Models
         public string TipoGanado { get; set; } // Ejemplo: "Bovino", "Caprino", etc.
         public int CapacidadMaxima { get; set; } // Capacidad máxima del rancho
 
-        public User User { get; set; } // Relación con User
-        public ICollection<Lote> Lotes { get; set; } // Relación con Lote
+        public User User { get; set; }
+        public ICollection<Corrales> Corrales { get; set; } // Relación con Userpublic ICollection<Corrales> Corrales { get; set; }
     }
 }

@@ -24,7 +24,8 @@ namespace GanadoProBackEnd.Controllers
         {
             return await _context.Ranchos
                 .Include(r => r.User)
-                .Include(r => r.Lotes)
+                .Include(r => r.Corrales)
+                    .ThenInclude(c => c.Lotes)
                 .Select(r => new RanchoResponseDto
                 {
                     Id_Rancho = r.Id_Rancho,
@@ -36,23 +37,26 @@ namespace GanadoProBackEnd.Controllers
                     TipoGanado = r.TipoGanado,
                     CapacidadMaxima = r.CapacidadMaxima,
                     Id_User = r.Id_User,
-                    TotalLotes = r.Lotes.Count,
-                    Lotes = r.Lotes.Select(l => new LoteInfoDto
+                    TotalCorrales = r.Corrales.Count,
+                    TotalLotes = r.Corrales.Sum(c => c.Lotes.Count), // Lotes de todos los corrales
+                    Corrales = r.Corrales.Select(c => new CorralInfoDto
                     {
-                        Id_Lote = l.Id_Lote,
-                        Nombre = l.NombreRancho,
-                        FechaEntrada = l.Fecha_Entrada
+                        Id_Corral = c.Id_Corrales,
+                        NombreCorral = c.NombreCorral,
+                        TotalLotes = c.Lotes.Count
                     }).ToList()
                 })
                 .ToListAsync();
         }
+
         // GET: api/Ranchos/5
         [HttpGet("{id}")]
         public async Task<ActionResult<RanchoResponseDto>> GetRancho(int id)
         {
             var rancho = await _context.Ranchos
                 .Include(r => r.User)
-                .Include(r => r.Lotes)
+                .Include(r => r.Corrales)
+                    .ThenInclude(c => c.Lotes)
                 .FirstOrDefaultAsync(r => r.Id_Rancho == id);
 
             if (rancho == null) return NotFound();
@@ -68,12 +72,13 @@ namespace GanadoProBackEnd.Controllers
                 TipoGanado = rancho.TipoGanado,
                 CapacidadMaxima = rancho.CapacidadMaxima,
                 Id_User = rancho.Id_User,
-                TotalLotes = rancho.Lotes.Count,
-                Lotes = rancho.Lotes.Select(l => new LoteInfoDto
+                TotalCorrales = rancho.Corrales.Count,
+                TotalLotes = rancho.Corrales.Sum(c => c.Lotes.Count),
+                Corrales = rancho.Corrales.Select(c => new CorralInfoDto
                 {
-                    Id_Lote = l.Id_Lote,
-                    Nombre = l.NombreRancho,
-                    FechaEntrada = l.Fecha_Entrada
+                    Id_Corral = c.Id_Corrales,
+                    NombreCorral = c.NombreCorral,
+                    TotalLotes = c.Lotes.Count
                 }).ToList()
             };
         }
@@ -145,11 +150,11 @@ namespace GanadoProBackEnd.Controllers
         public async Task<IActionResult> DeleteRancho(int id)
         {
             var rancho = await _context.Ranchos
-                .Include(r => r.Lotes)
+                .Include(r => r.Corrales)
                 .FirstOrDefaultAsync(r => r.Id_Rancho == id);
 
             if (rancho == null) return NotFound();
-            if (rancho.Lotes.Any()) return BadRequest("No se puede eliminar un rancho con lotes asociados");
+            if (rancho.Corrales.Any()) return BadRequest("No se puede eliminar un rancho con lotes asociados");
 
             _context.Ranchos.Remove(rancho);
             await _context.SaveChangesAsync();
@@ -168,8 +173,9 @@ namespace GanadoProBackEnd.Controllers
         public string TipoGanado { get; set; }
         public int CapacidadMaxima { get; set; }
         public int Id_User { get; set; }
+        public int TotalCorrales { get; set; }
         public int TotalLotes { get; set; }
-        public List<LoteInfoDto> Lotes { get; set; }
+        public List<CorralInfoDto> Corrales { get; set; }
     }
 
     public class LoteInfoDto
@@ -183,26 +189,26 @@ namespace GanadoProBackEnd.Controllers
     {
         [Required]
         public int Id_User { get; set; }
-        
+
         [Required]
         [StringLength(50)]
         public string NombreRancho { get; set; }
-        
+
         [StringLength(100)]
         public string Ubicacion { get; set; }
-        
+
         [StringLength(50)]
         public string Propietario { get; set; }
-        
+
         [StringLength(20)]
         public string Telefono { get; set; }
-        
+
         [EmailAddress]
         public string CorreoElectronico { get; set; }
-        
+
         [StringLength(50)]
         public string TipoGanado { get; set; }
-        
+
         [Range(1, 100000)]
         public int CapacidadMaxima { get; set; }
     }
@@ -216,6 +222,12 @@ namespace GanadoProBackEnd.Controllers
         public string? CorreoElectronico { get; set; }
         public string? TipoGanado { get; set; }
         public int? CapacidadMaxima { get; set; }
+    }
+    public class CorralInfoDto
+    {
+        public int Id_Corral { get; set; }
+        public string NombreCorral { get; set; }
+        public int TotalLotes { get; set; }
     }
 }
     

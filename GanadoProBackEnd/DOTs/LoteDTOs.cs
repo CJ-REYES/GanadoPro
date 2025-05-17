@@ -51,12 +51,4 @@ public class UpdateLoteDto
     }
 
 
-
-
-    public class LoteInfoDto
-    {
-        public int Id_Lote { get; set; }
-        public string Nombre { get; set; }
-        public DateTime FechaEntrada { get; set; }
-    }
 }

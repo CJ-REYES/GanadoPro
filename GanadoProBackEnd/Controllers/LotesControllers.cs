@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using GanadoProBackEnd.Data;
 using GanadoProBackEnd.Models;
 using GanadoProBackEnd.DTOs;
-
+using System.ComponentModel.DataAnnotations;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -17,16 +17,18 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: api/Lotes
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<GanadoProBackEnd.DTOs.LoteResponseDto>>> GetLotes()
+        public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes()
         {
             return await _context.Lotes
-                .Include(l => l.Rancho)
+                .Include(l => l.corrales)
+                    .ThenInclude(c => c.Rancho)
                 .Include(l => l.Animales)
-                .Select(l => new GanadoProBackEnd.DTOs.LoteResponseDto
+                .Select(l => new LoteResponseDto
                 {
                     Id_Lote = l.Id_Lote,
-                    Id_Rancho = l.Id_Rancho,
-                    NombreRancho = l.NombreRancho,
+                    Id_Corral = l.Id_Corrales,
+                    NombreCorral = l.corrales.NombreCorral,
+                    NombreRancho = l.corrales.Rancho.NombreRancho,
                     Remo = l.Remo,
                     Fecha_Entrada = l.Fecha_Entrada,
                     Fecha_Salida = l.Fecha_Salida,
@@ -40,10 +42,10 @@ namespace GanadoProBackEnd.Controllers
                         Peso = a.Peso,
                         Sexo = a.Sexo,
                         Clasificacion = a.Clasificacion,
-                        Categoria = a.Categoria,      
+                        Categoria = a.Categoria,
                         Raza = a.Raza,
-                        Edad_Meses = a.Edad_Meses,     
-                        Fecha_Registro = a.Fecha_Registro, 
+                        Edad_Meses = a.Edad_Meses,
+                        Fecha_Registro = a.Fecha_Registro,
                         Id_Lote = a.Id_Lote
                     }).ToList()
                 })
@@ -52,20 +54,22 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: api/Lotes/5
         [HttpGet("{id}")]
-        public async Task<ActionResult<GanadoProBackEnd.DTOs.LoteResponseDto>> GetLote(int id)
+        public async Task<ActionResult<LoteResponseDto>> GetLote(int id)
         {
             var lote = await _context.Lotes
-                .Include(l => l.Rancho)
+                .Include(l => l.corrales)
+                    .ThenInclude(c => c.Rancho)
                 .Include(l => l.Animales)
                 .FirstOrDefaultAsync(l => l.Id_Lote == id);
 
             if (lote == null) return NotFound();
 
-            return new GanadoProBackEnd.DTOs.LoteResponseDto
+            return new LoteResponseDto
             {
                 Id_Lote = lote.Id_Lote,
-                Id_Rancho = lote.Id_Rancho,
-                NombreRancho = lote.NombreRancho,
+                Id_Corral = lote.Id_Corrales,
+                NombreCorral = lote.corrales.NombreCorral,
+                NombreRancho = lote.corrales.Rancho.NombreRancho,
                 Remo = lote.Remo,
                 Fecha_Entrada = lote.Fecha_Entrada,
                 Fecha_Salida = lote.Fecha_Salida,
@@ -73,34 +77,36 @@ namespace GanadoProBackEnd.Controllers
                 Comunidad = lote.Comunidad,
                 TotalAnimales = lote.Animales.Count,
                 Animales = lote.Animales.Select(a => new AnimalResponseDto
-{
-    Id_Animal = a.Id_Animal,
-    Arete = a.Arete,
-    Peso = a.Peso,
-    Sexo = a.Sexo,
-    Clasificacion = a.Clasificacion,
-    Categoria = a.Categoria,      // Ahora está incluido
-    Raza = a.Raza,
-    Edad_Meses = a.Edad_Meses,     // Ahora está incluido
-    Fecha_Registro = a.Fecha_Registro, // Ahora está incluido
-    Id_Lote = a.Id_Lote
-}).ToList()
+                {
+                    Id_Animal = a.Id_Animal,
+                    Arete = a.Arete,
+                    Peso = a.Peso,
+                    Sexo = a.Sexo,
+                    Clasificacion = a.Clasificacion,
+                    Categoria = a.Categoria,
+                    Raza = a.Raza,
+                    Edad_Meses = a.Edad_Meses,
+                    Fecha_Registro = a.Fecha_Registro,
+                    Id_Lote = a.Id_Lote
+                }).ToList()
             };
         }
 
         // POST: api/Lotes
         [HttpPost]
-        public async Task<ActionResult<GanadoProBackEnd.DTOs.LoteResponseDto>> CreateLote([FromBody] GanadoProBackEnd.DTOs.CreateLoteDto loteDto)
+        public async Task<ActionResult<LoteResponseDto>> CreateLote([FromBody] CreateLoteDto loteDto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
-            var rancho = await _context.Ranchos.FindAsync(loteDto.Id_Rancho);
-            if (rancho == null) return BadRequest("Rancho no encontrado");
+            var corral = await _context.Corrales
+                .Include(c => c.Rancho)
+                .FirstOrDefaultAsync(c => c.Id_Corrales == loteDto.Id_Corral);
+
+            if (corral == null) return BadRequest("Corral no encontrado");
 
             var lote = new Lote
             {
-                Id_Rancho = loteDto.Id_Rancho,
-                NombreRancho = rancho.NombreRancho,
+                Id_Corrales = loteDto.Id_Corral,
                 Remo = loteDto.Remo,
                 Fecha_Entrada = loteDto.Fecha_Entrada,
                 Fecha_Salida = loteDto.Fecha_Salida,
@@ -111,11 +117,12 @@ namespace GanadoProBackEnd.Controllers
             await _context.Lotes.AddAsync(lote);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetLote), new { id = lote.Id_Lote }, new GanadoProBackEnd.DTOs.LoteResponseDto
+            return CreatedAtAction(nameof(GetLote), new { id = lote.Id_Lote }, new LoteResponseDto
             {
                 Id_Lote = lote.Id_Lote,
-                Id_Rancho = lote.Id_Rancho,
-                NombreRancho = lote.NombreRancho,
+                Id_Corral = lote.Id_Corrales,
+                NombreCorral = corral.NombreCorral,
+                NombreRancho = corral.Rancho.NombreRancho,
                 Remo = lote.Remo,
                 Fecha_Entrada = lote.Fecha_Entrada,
                 Fecha_Salida = lote.Fecha_Salida,
@@ -127,14 +134,14 @@ namespace GanadoProBackEnd.Controllers
 
         // PUT: api/Lotes/5
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateLote(int id, [FromBody] GanadoProBackEnd.DTOs.UpdateLoteDto updateDto)
+        public async Task<IActionResult> UpdateLote(int id, [FromBody] UpdateLoteDto updateDto)
         {
             if (!ModelState.IsValid) return BadRequest(ModelState);
 
             var lote = await _context.Lotes.FindAsync(id);
             if (lote == null) return NotFound();
 
-            lote.NombreRancho = updateDto.NombreRancho ?? lote.NombreRancho;
+            // Actualizar solo propiedades permitidas
             lote.Remo = updateDto.Remo ?? lote.Remo;
             lote.Fecha_Entrada = updateDto.Fecha_Entrada ?? lote.Fecha_Entrada;
             lote.Fecha_Salida = updateDto.Fecha_Salida ?? lote.Fecha_Salida;
@@ -163,5 +170,49 @@ namespace GanadoProBackEnd.Controllers
 
             return NoContent();
         }
+    }
+
+    // ======= DTOs Actualizados =======
+    public class LoteResponseDto
+    {
+        public int Id_Lote { get; set; }
+        public int Id_Corral { get; set; }
+        public string NombreCorral { get; set; }
+        public string NombreRancho { get; set; }
+        public int Remo { get; set; }
+        public DateTime Fecha_Entrada { get; set; }
+        public DateTime Fecha_Salida { get; set; }
+        public string Upp { get; set; }
+        public string Comunidad { get; set; }
+        public int TotalAnimales { get; set; }
+        public List<AnimalResponseDto> Animales { get; set; }
+    }
+
+    public class CreateLoteDto
+    {
+        [Required]
+        public int Id_Corral { get; set; }
+        
+        [Required]
+        public int Remo { get; set; }
+        
+        [Required]
+        public DateTime Fecha_Entrada { get; set; }
+        public DateTime Fecha_Salida { get; set; }
+        
+        [StringLength(50)]
+        public string Upp { get; set; }
+        
+        [StringLength(100)]
+        public string Comunidad { get; set; }
+    }
+
+    public class UpdateLoteDto
+    {
+        public int? Remo { get; set; }
+        public DateTime? Fecha_Entrada { get; set; }
+        public DateTime? Fecha_Salida { get; set; }
+        public string Upp { get; set; }
+        public string Comunidad { get; set; }
     }
 }

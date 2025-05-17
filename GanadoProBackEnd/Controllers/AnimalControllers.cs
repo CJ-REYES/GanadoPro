@@ -62,8 +62,8 @@ public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] Creat
     if (areteExiste) return BadRequest("El número de arete ya está registrado.");
 
     // Corregir: "Lote" -> "lote" (minúscula)
-    var lote = await _context.Lotes.FindAsync(animalDto.Id_Lote); // <-- ¡Cambio aquí!
-    if (lote == null) return BadRequest("Lote no encontrado");
+   var lote = await _context.Lotes.FindAsync(animalDto.Id_Lote);
+if (lote == null) return BadRequest("Lote no encontrado");
 
     var animal = new Animal
     {
@@ -109,14 +109,20 @@ public async Task<IActionResult> UpdateAnimal(int id, [FromBody] UpdateAnimalDto
         if (areteExiste) return BadRequest("El número de arete ya está registrado.");
         animal.Arete = updateDto.Arete.Value;
     }
+    if (updateDto.Id_Lote.HasValue)
+{
+    var lote = await _context.Lotes.FindAsync(updateDto.Id_Lote.Value);
+    if (lote == null) return BadRequest("Lote no encontrado");
+    animal.Id_Lote = updateDto.Id_Lote.Value;
+}
 
     // Corregir: "Lote" -> "Lotes"
-    if (updateDto.Id_Lote.HasValue)
-    {
-        var lote = await _context.Lotes.FindAsync(updateDto.Id_Lote.Value); // <-- Cambio aquí
-        if (lote == null) return BadRequest("Lote no encontrado");
-        animal.Id_Lote = updateDto.Id_Lote.Value;
-    }
+            if (updateDto.Id_Lote.HasValue)
+            {
+                var lote = await _context.Lotes.FindAsync(updateDto.Id_Lote.Value); // <-- Cambio aquí
+                if (lote == null) return BadRequest("Lote no encontrado");
+                animal.Id_Lote = updateDto.Id_Lote.Value;
+            }
 
     // Actualizar propiedades
     animal.Peso = updateDto.Peso ?? animal.Peso;

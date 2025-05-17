@@ -12,7 +12,7 @@ namespace GanadoProBackEnd.Models
         
         public int Id_Lote { get; set; }
         [Required]
-        public int Id_Rancho { get; set; } 
+        public int Id_Corrales { get; set; } 
         [Required(ErrorMessage = "El nombre del Rancho es obligatorio")]
         [StringLength(50, ErrorMessage = "El nombre del lote no puede exceder los 50 caracteres")]
         
@@ -26,7 +26,7 @@ namespace GanadoProBackEnd.Models
         public string Comunidad { get; set; }
 
         // Propiedades de navegación
-        public Rancho Rancho { get; set; }
+        public Corrales corrales { get; set; }
         public ICollection<Animal> Animales { get; set; }
    
     }
