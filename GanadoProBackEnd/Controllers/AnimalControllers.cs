@@ -87,15 +87,17 @@ public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] Creat
    var lote = await _context.Lotes.FindAsync(animalDto.Id_Lote);
 if (lote == null) return BadRequest("Lote no encontrado");
 
-    var animal = new Animal
+   var animal = new Animal
     {
         Arete = animalDto.Arete,
         Peso = animalDto.Peso,
         Sexo = animalDto.Sexo,
         Clasificacion = animalDto.Clasificacion,
-        Categoria = animalDto.Categoria, // <-- Propiedad añadida
+        Categoria = animalDto.Categoria,
         Raza = animalDto.Raza,
-        Id_Lote = animalDto.Id_Lote
+        Id_Lote = animalDto.Id_Lote,
+        Origen = animalDto.Origen, // Añadir esta línea
+        FechaCompra = animalDto.FechaCompra // Añadir esta línea
     };
 
     await _context.Animales.AddAsync(animal);

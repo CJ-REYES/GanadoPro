@@ -37,7 +37,18 @@ namespace GanadoProBackEnd.Controllers
             await _context.Ventas.AddAsync(venta);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetVenta), new { id = venta.Id_Venta }, venta);
+            return CreatedAtAction(nameof(GetVenta), new { id = venta.Id_Venta }, new VentaResponseDto
+    {
+        Id_Venta = venta.Id_Venta,
+        FechaProgramada = venta.FechaProgramada,
+        Cliente = venta.Cliente,
+        Estado = venta.Estado,
+        Lotes = venta.Lotes.Select(l => new LoteInfoDto 
+        { 
+            Id_Lote = l.Id_Lote, 
+            FechaEntrada = l.Fecha_Entrada 
+        }).ToList()
+    });
         }
 
         // GET: api/Ventas/5

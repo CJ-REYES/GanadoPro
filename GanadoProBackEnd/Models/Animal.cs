@@ -18,8 +18,8 @@ namespace GanadoProBackEnd.Models
         public string Raza { get; set; }
         public int Edad_Meses { get; set; }
         public DateTime Fecha_Registro { get; set; } = DateTime.Now; // Inicializa con la fecha actual
-public string Origen { get; set; } // "Comprado", "Nacido en el rancho"
-    public DateTime? FechaCompra { get; set; }
+        public string Origen { get; set; } = "Comprado"; // "Comprado", "Nacido en el rancho"
+        public DateTime? FechaCompra { get; set; }
         // FK a Lote
         [Required]
         public int Id_Lote { get; set; }      // Nueva propiedad para la relación

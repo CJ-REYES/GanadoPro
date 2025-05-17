@@ -4,6 +4,7 @@ using GanadoProBackEnd.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GanadoProBackEnd.Migrations
 {
     [DbContext(typeof(MyDbContext))]
-    partial class MyDbContextModelSnapshot : ModelSnapshot
+    [Migration("20250517175504_FixCorralesNotasNullable")]
+    partial class FixCorralesNotasNullable
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -137,11 +140,16 @@ namespace GanadoProBackEnd.Migrations
                     b.Property<int>("Id_Corrales")
                         .HasColumnType("int");
 
+                    b.Property<string>("NombreRancho")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("varchar(50)");
+
                     b.Property<string>("ObservacionesVenta")
+                        .IsRequired()
                         .HasColumnType("longtext");
 
                     b.Property<int>("Remo")
-                        .HasMaxLength(50)
                         .HasColumnType("int");
 
                     b.Property<string>("Upp")
