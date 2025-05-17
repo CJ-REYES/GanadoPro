@@ -1,0 +1,30 @@
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.2.0
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GanadoProBackEnd", "GanadoProBackEnd\GanadoProBackEnd.csproj", "{3AC95BBF-8855-641C-9310-88C25F53F2F9}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GanadoProFrontEnd", "GanadoProFrontEnd\GanadoProFrontEnd.csproj", "{505F44A4-40E1-9371-AE8F-844842AB3BAB}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{3AC95BBF-8855-641C-9310-88C25F53F2F9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3AC95BBF-8855-641C-9310-88C25F53F2F9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3AC95BBF-8855-641C-9310-88C25F53F2F9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3AC95BBF-8855-641C-9310-88C25F53F2F9}.Release|Any CPU.Build.0 = Release|Any CPU
+		{505F44A4-40E1-9371-AE8F-844842AB3BAB}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{505F44A4-40E1-9371-AE8F-844842AB3BAB}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{505F44A4-40E1-9371-AE8F-844842AB3BAB}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{505F44A4-40E1-9371-AE8F-844842AB3BAB}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {9F1E980C-63E1-41EB-B635-6C449FDABC3B}
+	EndGlobalSection
+EndGlobal

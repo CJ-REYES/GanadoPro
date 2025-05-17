@@ -1,0 +1,5 @@
+C:\Proyectos\GanadoPro\obj\Debug\net8.0\GanadoPro.GeneratedMSBuildEditorConfig.editorconfig
+C:\Proyectos\GanadoPro\obj\Debug\net8.0\GanadoPro.AssemblyInfoInputs.cache
+C:\Proyectos\GanadoPro\obj\Debug\net8.0\GanadoPro.AssemblyInfo.cs
+C:\Proyectos\GanadoPro\obj\Debug\net8.0\GanadoPro.csproj.CoreCompileInputs.cache
+C:\Proyectos\GanadoPro\obj\Debug\net8.0\GanadoPro.sourcelink.json
