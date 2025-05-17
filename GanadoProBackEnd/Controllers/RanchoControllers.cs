@@ -24,7 +24,7 @@ namespace GanadoProBackEnd.Controllers
         {
             return await _context.Ranchos
                 .Include(r => r.User)
-                .Include(r => r.Lote)
+                .Include(r => r.Lotes)
                 .Select(r => new RanchoResponseDto
                 {
                     Id_Rancho = r.Id_Rancho,
@@ -36,8 +36,8 @@ namespace GanadoProBackEnd.Controllers
                     TipoGanado = r.TipoGanado,
                     CapacidadMaxima = r.CapacidadMaxima,
                     Id_User = r.Id_User,
-                    TotalLotes = r.Lote.Count,
-                    Lotes = r.Lote.Select(l => new LoteInfoDto
+                    TotalLotes = r.Lotes.Count,
+                    Lotes = r.Lotes.Select(l => new LoteInfoDto
                     {
                         Id_Lote = l.Id_Lote,
                         Nombre = l.NombreRancho,
@@ -52,7 +52,7 @@ namespace GanadoProBackEnd.Controllers
         {
             var rancho = await _context.Ranchos
                 .Include(r => r.User)
-                .Include(r => r.Lote)
+                .Include(r => r.Lotes)
                 .FirstOrDefaultAsync(r => r.Id_Rancho == id);
 
             if (rancho == null) return NotFound();
@@ -68,8 +68,8 @@ namespace GanadoProBackEnd.Controllers
                 TipoGanado = rancho.TipoGanado,
                 CapacidadMaxima = rancho.CapacidadMaxima,
                 Id_User = rancho.Id_User,
-                TotalLotes = rancho.Lote.Count,
-                Lotes = rancho.Lote.Select(l => new LoteInfoDto
+                TotalLotes = rancho.Lotes.Count,
+                Lotes = rancho.Lotes.Select(l => new LoteInfoDto
                 {
                     Id_Lote = l.Id_Lote,
                     Nombre = l.NombreRancho,
@@ -145,11 +145,11 @@ namespace GanadoProBackEnd.Controllers
         public async Task<IActionResult> DeleteRancho(int id)
         {
             var rancho = await _context.Ranchos
-                .Include(r => r.Lote)
+                .Include(r => r.Lotes)
                 .FirstOrDefaultAsync(r => r.Id_Rancho == id);
 
             if (rancho == null) return NotFound();
-            if (rancho.Lote.Any()) return BadRequest("No se puede eliminar un rancho con lotes asociados");
+            if (rancho.Lotes.Any()) return BadRequest("No se puede eliminar un rancho con lotes asociados");
 
             _context.Ranchos.Remove(rancho);
             await _context.SaveChangesAsync();

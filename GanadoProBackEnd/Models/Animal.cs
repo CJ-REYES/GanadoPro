@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -19,6 +20,7 @@ namespace GanadoProBackEnd.Models
         public DateTime Fecha_Registro { get; set; } = DateTime.Now; // Inicializa con la fecha actual
 
         // FK a Lote
+        [Required]
         public int Id_Lote { get; set; }      // Nueva propiedad para la relación
         public Lote Lote { get; set; }        // Propiedad de navegación
     }

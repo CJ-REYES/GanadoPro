@@ -26,23 +26,32 @@ public DbSet<Rancho> Ranchos { get; set; }
             modelBuilder.Entity<Animal>()
                 .HasKey(a => a.Id_Animal); // PK para Animal
 
-            // Relación User (1) -> Rancho (muchos)
+            // Configuración de eliminación en cascada (opcional)
             modelBuilder.Entity<Rancho>()
-                .HasOne(r => r.User) // Propiedad de navegación en Rancho (debe llamarse "User")
-                .WithMany(u => u.Rancho) // Colección en User (debe llamarse "Ranchos")
-                .HasForeignKey(r => r.Id_User); // FK en Rancho (propiedad "Id_User")
+                .HasMany(r => r.Lotes)
+                .WithOne(l => l.Rancho)
+                .OnDelete(DeleteBehavior.Cascade);
 
-            // Relación Rancho (1) -> Lote (muchos)
             modelBuilder.Entity<Lote>()
-                .HasOne(l => l.Rancho) // Propiedad de navegación en Lote (debe llamarse "Rancho")
-                .WithMany(r => r.Lote) // Colección en Rancho (debe llamarse "Lotes")
-                .HasForeignKey(l => l.Id_Rancho); // FK en Lote (propiedad "Id_Rancho")
+                .HasMany(l => l.Animales)
+                .WithOne(a => a.Lote)
+                .OnDelete(DeleteBehavior.Cascade);
 
-            // Relación Lote (1) -> Animal (muchos)
-            modelBuilder.Entity<Animal>()
-                .HasOne(a => a.Lote) // Propiedad de navegación en Animal (debe llamarse "Lote")
-                .WithMany(l => l.Animales) // Colección en Lote (debe llamarse "Animales")
-                .HasForeignKey(a => a.Id_Lote); // FK en Animal (propiedad "Id_Lote")
+            // Relaciones actualizadas con nombres plurales
+            modelBuilder.Entity<Rancho>()
+                .HasOne(r => r.User)
+                .WithMany(u => u.Ranchos) // Coincide con la propiedad en User
+                .HasForeignKey(r => r.Id_User);
+
+            modelBuilder.Entity<Lote>()
+                .HasOne(l => l.Rancho)
+                .WithMany(r => r.Lotes) // Coincide con la propiedad en Rancho
+                .HasForeignKey(l => l.Id_Rancho);
+             modelBuilder.Entity<Animal>()
+        .HasOne(a => a.Lote)
+        .WithMany(l => l.Animales)
+        .HasForeignKey(a => a.Id_Lote); // ✔️ Usa Id_Lote como FK
+
         }
     }
 }

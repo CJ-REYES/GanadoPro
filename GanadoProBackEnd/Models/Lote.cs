@@ -11,6 +11,7 @@ namespace GanadoProBackEnd.Models
     {
         
         public int Id_Lote { get; set; }
+        [Required]
         public int Id_Rancho { get; set; } 
         [Required(ErrorMessage = "El nombre del Rancho es obligatorio")]
         [StringLength(50, ErrorMessage = "El nombre del lote no puede exceder los 50 caracteres")]
@@ -18,8 +19,6 @@ namespace GanadoProBackEnd.Models
         public string NombreRancho { get; set; }
        
         public int Remo { get; set; }
-        [Required(ErrorMessage = "El peso es obligatorio")]
-        [Range(1, 2000, ErrorMessage = "El peso debe estar entre 1 y 2000")]
         public DateTime Fecha_Entrada { get; set; }
    
         public DateTime Fecha_Salida { get; set; }

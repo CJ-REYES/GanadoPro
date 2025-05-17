@@ -5,7 +5,9 @@ namespace GanadoProBackEnd.Models
 {
     public class Rancho
     {
+        [Required]
         public int Id_Rancho { get; set; }
+        [Required]
         public int Id_User { get; set; } // FK a User
         [Required(ErrorMessage = "El nombre del rancho es obligatorio")]
         [StringLength(50, ErrorMessage = "El nombre del rancho no puede exceder los 50 caracteres")]
@@ -18,6 +20,6 @@ namespace GanadoProBackEnd.Models
         public int CapacidadMaxima { get; set; } // Capacidad máxima del rancho
 
         public User User { get; set; } // Relación con User
-        public ICollection<Lote> Lote { get; set; } // Relación con Lote
+        public ICollection<Lote> Lotes { get; set; } // Relación con Lote
     }
 }

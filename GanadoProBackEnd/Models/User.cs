@@ -19,6 +19,6 @@ namespace GanadoProBackEnd.Models
 
         public string Upp { get; set; } // Corregido a "Upp"
 
-        public ICollection<Rancho> Rancho { get; set; }
+        public ICollection<Rancho> Ranchos { get; set; }
     }
 }
