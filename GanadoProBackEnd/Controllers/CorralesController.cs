@@ -87,7 +87,8 @@ namespace GanadoProBackEnd.Controllers
                 NombreCorral = corralDto.NombreCorral,
                 CapacidadMaxima = corralDto.CapacidadMaxima,
                 TipoGanado = corralDto.TipoGanado,
-                Estado = "Disponible" // Estado inicial
+                Estado = "Disponible", // Estado inicial
+                Notas = "" // Puedes inicializarlo como quieras
             };
 
             await _context.Corrales.AddAsync(corral);

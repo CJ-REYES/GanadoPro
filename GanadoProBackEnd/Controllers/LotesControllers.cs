@@ -51,6 +51,39 @@ namespace GanadoProBackEnd.Controllers
                 })
                 .ToListAsync();
         }
+        // GET: api/Lotes/para-venta
+        [HttpGet("para-venta")]
+        public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotesParaVenta()
+        {
+            return await _context.Lotes
+                .Where(l => l.Estado == "Disponible")
+                .Include(l => l.corrales)
+                .Select(l => new LoteResponseDto
+                {
+                    Id_Lote = l.Id_Lote,
+                    NombreCorral = l.corrales.NombreCorral,
+                    Fecha_Entrada = l.Fecha_Entrada,
+                    TotalAnimales = l.Animales.Count,
+                    Estado = l.Estado
+                })
+                .ToListAsync();
+        }
+
+        // PATCH: api/Lotes/5/marcar-venta
+        [HttpPatch("{id}/marcar-venta")]
+        public async Task<IActionResult> MarcarParaVenta(int id, [FromBody] EstadoLoteDto estadoDto)
+        {
+            var lote = await _context.Lotes.FindAsync(id);
+            if (lote == null) return NotFound();
+
+            lote.Estado = estadoDto.Estado;
+            lote.ObservacionesVenta = estadoDto.Observaciones;
+
+            _context.Entry(lote).State = EntityState.Modified;
+            await _context.SaveChangesAsync();
+
+            return NoContent();
+        }
 
         // GET: api/Lotes/5
         [HttpGet("{id}")]
@@ -184,6 +217,8 @@ namespace GanadoProBackEnd.Controllers
         public DateTime Fecha_Salida { get; set; }
         public string Upp { get; set; }
         public string Comunidad { get; set; }
+        public string Estado { get; set; }
+        public string ObservacionesVenta { get; set; }
         public int TotalAnimales { get; set; }
         public List<AnimalResponseDto> Animales { get; set; }
     }
@@ -192,17 +227,17 @@ namespace GanadoProBackEnd.Controllers
     {
         [Required]
         public int Id_Corral { get; set; }
-        
+
         [Required]
         public int Remo { get; set; }
-        
+
         [Required]
         public DateTime Fecha_Entrada { get; set; }
         public DateTime Fecha_Salida { get; set; }
-        
+
         [StringLength(50)]
         public string Upp { get; set; }
-        
+
         [StringLength(100)]
         public string Comunidad { get; set; }
     }
@@ -214,5 +249,12 @@ namespace GanadoProBackEnd.Controllers
         public DateTime? Fecha_Salida { get; set; }
         public string Upp { get; set; }
         public string Comunidad { get; set; }
+    }
+    
+    public class EstadoLoteDto
+    {
+        [Required]
+        public string Estado { get; set; } // Ej: Disponible, Reservado, Vendido
+        public string Observaciones { get; set; }
     }
 }

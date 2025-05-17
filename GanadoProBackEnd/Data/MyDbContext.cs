@@ -12,41 +12,47 @@ public DbSet<Lote> Lotes { get; set; } // Cambiado a plural
 public DbSet<Animal> Animales { get; set; }
 public DbSet<Rancho> Ranchos { get; set; }
 public DbSet<Corrales> Corrales { get; set; }
+public DbSet<Venta> Ventas { get; set; }
         protected override void OnModelCreating(ModelBuilder modelBuilder)
-{
-    modelBuilder.Entity<Corrales>().HasKey(c => c.Id_Corrales);
-    modelBuilder.Entity<User>().HasKey(u => u.Id_User);
-    modelBuilder.Entity<Rancho>().HasKey(r => r.Id_Rancho);
-    modelBuilder.Entity<Lote>().HasKey(l => l.Id_Lote);
-    modelBuilder.Entity<Animal>().HasKey(a => a.Id_Animal);
+        {
+            modelBuilder.Entity<Corrales>().HasKey(c => c.Id_Corrales);
+            modelBuilder.Entity<User>().HasKey(u => u.Id_User);
+            modelBuilder.Entity<Rancho>().HasKey(r => r.Id_Rancho);
+            modelBuilder.Entity<Lote>().HasKey(l => l.Id_Lote);
+            modelBuilder.Entity<Animal>().HasKey(a => a.Id_Animal);
+            modelBuilder.Entity<Venta>().HasKey(v => v.Id_Venta);
 
-    // Rancho -> Corrales (un rancho tiene muchos corrales)
-    modelBuilder.Entity<Rancho>()
-        .HasMany(r => r.Corrales)
-        .WithOne(c => c.Rancho)
-        .HasForeignKey(c => c.Id_Rancho)
-        .OnDelete(DeleteBehavior.Cascade);
+            // Rancho -> Corrales (un rancho tiene muchos corrales)
+            modelBuilder.Entity<Rancho>()
+                .HasMany(r => r.Corrales)
+                .WithOne(c => c.Rancho)
+                .HasForeignKey(c => c.Id_Rancho)
+                .OnDelete(DeleteBehavior.Cascade);
 
-    // Corrales -> Lote (un corral tiene muchos lotes)
-    modelBuilder.Entity<Corrales>()
-        .HasMany(c => c.Lotes)
-        .WithOne(l => l.corrales) // Cambia 'Corrales' por el nombre correcto de la propiedad de navegación en Lote
-        .HasForeignKey(l => l.Id_Corrales)
-        .OnDelete(DeleteBehavior.Cascade);
+            // Corrales -> Lote (un corral tiene muchos lotes)
+            modelBuilder.Entity<Corrales>()
+                .HasMany(c => c.Lotes)
+                .WithOne(l => l.corrales) // Cambia 'Corrales' por el nombre correcto de la propiedad de navegación en Lote
+                .HasForeignKey(l => l.Id_Corrales)
+                .OnDelete(DeleteBehavior.Cascade);
 
-    // Lote -> Animal (un lote tiene muchos animales)
-    modelBuilder.Entity<Lote>()
-        .HasMany(l => l.Animales)
-        .WithOne(a => a.Lote)
-        .HasForeignKey(a => a.Id_Lote)
-        .OnDelete(DeleteBehavior.Cascade);
+            // Lote -> Animal (un lote tiene muchos animales)
+            modelBuilder.Entity<Lote>()
+                .HasMany(l => l.Animales)
+                .WithOne(a => a.Lote)
+                .HasForeignKey(a => a.Id_Lote)
+                .OnDelete(DeleteBehavior.Cascade);
 
-    // User -> Rancho (un usuario tiene muchos ranchos)
-    modelBuilder.Entity<User>()
-        .HasMany(u => u.Ranchos)
-        .WithOne(r => r.User)
-        .HasForeignKey(r => r.Id_User)
-        .OnDelete(DeleteBehavior.Cascade);
+            // User -> Rancho (un usuario tiene muchos ranchos)
+            modelBuilder.Entity<User>()
+                .HasMany(u => u.Ranchos)
+                .WithOne(r => r.User)
+                .HasForeignKey(r => r.Id_User)
+                .OnDelete(DeleteBehavior.Cascade);
+         // Relación many-to-many entre Venta y Lote
+    modelBuilder.Entity<Venta>()
+        .HasMany(v => v.Lotes)
+        .WithMany(l => l.Ventas);
 }
     }
 }

@@ -50,7 +50,29 @@ namespace GanadoProBackEnd.Controllers
                 Id_Lote = animal.Id_Lote
             };
         }
-
+[HttpGet("comprados")]
+public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesComprados()
+{
+    return Ok(await _context.Animales
+        .Where(a => a.Origen == "Comprado")
+        .Include(a => a.Lote)
+        .Select(a => new AnimalResponseDto 
+        {
+            Id_Animal = a.Id_Animal,
+            Arete = a.Arete,
+            Peso = a.Peso,
+            Sexo = a.Sexo,
+            Clasificacion = a.Clasificacion,
+            Categoria = a.Categoria,
+            Raza = a.Raza,
+            Edad_Meses = a.Edad_Meses,
+            Fecha_Registro = a.Fecha_Registro,
+            Id_Lote = a.Id_Lote,
+            Origen = a.Origen,
+            FechaCompra = a.FechaCompra
+        })
+        .ToListAsync());
+}
 // POST: api/Animales
 [HttpPost]
 public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] CreateAnimalDto animalDto)
@@ -65,15 +87,17 @@ public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] Creat
    var lote = await _context.Lotes.FindAsync(animalDto.Id_Lote);
 if (lote == null) return BadRequest("Lote no encontrado");
 
-    var animal = new Animal
+   var animal = new Animal
     {
         Arete = animalDto.Arete,
         Peso = animalDto.Peso,
         Sexo = animalDto.Sexo,
         Clasificacion = animalDto.Clasificacion,
-        Categoria = animalDto.Categoria, // <-- Propiedad añadida
+        Categoria = animalDto.Categoria,
         Raza = animalDto.Raza,
-        Id_Lote = animalDto.Id_Lote
+        Id_Lote = animalDto.Id_Lote,
+        Origen = animalDto.Origen, // Añadir esta línea
+        FechaCompra = animalDto.FechaCompra // Añadir esta línea
     };
 
     await _context.Animales.AddAsync(animal);
