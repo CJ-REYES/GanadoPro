@@ -46,7 +46,7 @@ namespace GanadoProBackEnd.Controllers
                 Lotes = venta.Lotes.Select(l => new LoteInfoDto 
                 { 
                     Id_Lote = l.Id_Lote,
-                    Comunidad = l.Comunidad
+                    Comunidad = l.Rancho.Ubicacion
                 }).ToList()
             });
         }
@@ -68,7 +68,7 @@ namespace GanadoProBackEnd.Controllers
                 Lotes = venta.Lotes.Select(l => new LoteInfoDto
                 {
                     Id_Lote = l.Id_Lote,
-                    Comunidad = l.Comunidad
+                    Comunidad = l.Rancho.Ubicacion
                 }).ToList()
             });
         }
