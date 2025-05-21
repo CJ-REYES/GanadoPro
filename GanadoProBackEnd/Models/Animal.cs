@@ -10,6 +10,7 @@ namespace GanadoProBackEnd.Models
     {
       
         public int Id_Animal { get; set; }
+        public int Id_Rancho { get; set; }
         public int Arete { get; set; }
         public int Peso { get; set; }
         public string Sexo { get; set; }      // H = HEMBRA, M = MACHO
@@ -21,8 +22,9 @@ namespace GanadoProBackEnd.Models
         public string Origen { get; set; } = "Comprado"; // "Comprado", "Nacido en el rancho"
         public DateTime? FechaCompra { get; set; }
         // FK a Lote
-        [Required]
-        public int Id_Lote { get; set; }      // Nueva propiedad para la relación
+        
+        public int? Id_Lote { get; set; }      // Nueva propiedad para la relación
+        public Rancho Rancho { get; set; } // Propiedad de navegación
         public Lote Lote { get; set; }        // Propiedad de navegación
     }
 }

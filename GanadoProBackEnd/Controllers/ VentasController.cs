@@ -28,7 +28,7 @@ namespace GanadoProBackEnd.Controllers
 
             var venta = new Venta
             {
-                FechaProgramada = ventaDto.FechaProgramada,
+                FechaVenta = ventaDto.FechaVenta,
                 Cliente = ventaDto.Cliente,
                 Estado = "Programada",
                 Lotes = lotes
@@ -38,17 +38,17 @@ namespace GanadoProBackEnd.Controllers
             await _context.SaveChangesAsync();
 
             return CreatedAtAction(nameof(GetVenta), new { id = venta.Id_Venta }, new VentaResponseDto
-    {
-        Id_Venta = venta.Id_Venta,
-        FechaProgramada = venta.FechaProgramada,
-        Cliente = venta.Cliente,
-        Estado = venta.Estado,
-        Lotes = venta.Lotes.Select(l => new LoteInfoDto 
-        { 
-            Id_Lote = l.Id_Lote, 
-            FechaEntrada = l.Fecha_Entrada 
-        }).ToList()
-    });
+            {
+                Id_Venta = venta.Id_Venta,
+                FechaVenta = venta.FechaVenta,
+                Cliente = venta.Cliente,
+                Estado = venta.Estado,
+                Lotes = venta.Lotes.Select(l => new LoteInfoDto 
+                { 
+                    Id_Lote = l.Id_Lote,
+                    Comunidad = l.Comunidad
+                }).ToList()
+            });
         }
 
         // GET: api/Ventas/5
@@ -59,27 +59,25 @@ namespace GanadoProBackEnd.Controllers
                 .Include(v => v.Lotes)
                 .FirstOrDefaultAsync(v => v.Id_Venta == id);
 
-            return venta == null ? NotFound() : (ActionResult<VentaResponseDto>)new VentaResponseDto
+            return venta == null ? NotFound() : Ok(new VentaResponseDto
             {
                 Id_Venta = venta.Id_Venta,
-                FechaProgramada = venta.FechaProgramada,
+                FechaVenta = venta.FechaVenta,
                 Cliente = venta.Cliente,
                 Estado = venta.Estado,
                 Lotes = venta.Lotes.Select(l => new LoteInfoDto
                 {
                     Id_Lote = l.Id_Lote,
-                    FechaEntrada = l.Fecha_Entrada
+                    Comunidad = l.Comunidad
                 }).ToList()
-            };
+            });
         }
     }
 
-    
-   
     public class CreateVentaDto
     {
         [Required]
-        public DateTime FechaProgramada { get; set; }
+        public DateTime FechaVenta { get; set; }
         
         [Required]
         [StringLength(100)]
@@ -92,9 +90,15 @@ namespace GanadoProBackEnd.Controllers
     public class VentaResponseDto
     {
         public int Id_Venta { get; set; }
-        public DateTime FechaProgramada { get; set; }
+        public DateTime FechaVenta { get; set; }
         public string Cliente { get; set; }
         public string Estado { get; set; }
         public List<LoteInfoDto> Lotes { get; set; }
+    }
+
+    public class LoteInfoDto
+    {
+        public int Id_Lote { get; set; }
+        public string Comunidad { get; set; }
     }
 }

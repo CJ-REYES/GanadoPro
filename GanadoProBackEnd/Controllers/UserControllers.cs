@@ -35,37 +35,41 @@ namespace GanadoProBackEnd.Controllers
                     Id_User = u.Id_User,
                     Name = u.Name,
                     Email = u.Email,
-                    Upp = u.Upp
+                    Upp = u.Upp,
+                    Telefono = u.Telefono
+
                 })
                 .ToListAsync();
         }
 
         // POST: api/Users
-        [HttpPost]
-        public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUserDto userDto)
-        {
-            if (!ModelState.IsValid)
-                return BadRequest(ModelState);
+[HttpPost]
+public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUserDto userDto)
+{
+    if (!ModelState.IsValid)
+        return BadRequest(ModelState);
 
-            var user = new User
-            {
-                Name = userDto.Name,
-                Email = userDto.Email,
-                Password = BCrypt.Net.BCrypt.HashPassword(userDto.Password),
-                Upp = userDto.Upp ?? string.Empty
-            };
+    var user = new User
+    {
+        Name = userDto.Name,
+        Email = userDto.Email,
+        Password = BCrypt.Net.BCrypt.HashPassword(userDto.Password),
+        Upp = userDto.Upp ?? string.Empty,
+        Telefono = userDto.Telefono // <-- Añade esta línea
+    };
 
-            await _context.Users.AddAsync(user);
-            await _context.SaveChangesAsync();
+    await _context.Users.AddAsync(user);
+    await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetUser), new { id = user.Id_User }, new UserResponseDto
-            {
-                Id_User = user.Id_User,
-                Name = user.Name,
-                Email = user.Email,
-                Upp = user.Upp
-            });
-        }
+    return CreatedAtAction(nameof(GetUser), new { id = user.Id_User }, new UserResponseDto
+    {
+        Id_User = user.Id_User,
+        Name = user.Name,
+        Email = user.Email,
+        Upp = user.Upp,
+        Telefono = user.Telefono // <-- Añade esto si es necesario
+    });
+}
 
         // GET: api/Users/5
         [HttpGet("{id}")]
@@ -83,7 +87,8 @@ namespace GanadoProBackEnd.Controllers
                 Id_User = user.Id_User,
                 Name = user.Name,
                 Email = user.Email,
-                Upp = user.Upp
+                Upp = user.Upp,
+                Telefono = user.Telefono
             };
         }
 
@@ -104,6 +109,7 @@ namespace GanadoProBackEnd.Controllers
             user.Name = updateDto.Name;
             user.Email = updateDto.Email;
             user.Upp = updateDto.Upp;
+            user.Telefono = updateDto.Telefono;
 
             _context.Entry(user).State = EntityState.Modified;
             await _context.SaveChangesAsync();
@@ -149,7 +155,9 @@ namespace GanadoProBackEnd.Controllers
                     Id_User = user.Id_User,
                     Name = user.Name,
                     Email = user.Email,
-                    Upp = user.Upp
+                    Upp = user.Upp,
+                    Telefono = user.Telefono
+
                 }
             });
         }
@@ -193,7 +201,10 @@ namespace GanadoProBackEnd.Controllers
             [MinLength(6, ErrorMessage = "Mínimo 6 caracteres")]
             public required string Password { get; set; }
 
-            [StringLength(20, ErrorMessage = "Máximo 20 caracteres")]
+            [Required(ErrorMessage = "El teléfono es obligatorio")]
+            [StringLength(15, ErrorMessage = "Máximo 15 caracteres")]
+            public required string Telefono { get; set; }
+
             public string? Upp { get; set; }
         }
 
@@ -206,6 +217,9 @@ namespace GanadoProBackEnd.Controllers
             [Required(ErrorMessage = "El email es obligatorio")]
             [EmailAddress(ErrorMessage = "Formato inválido")]
             public required string Email { get; set; }
+            [Required(ErrorMessage = "El teléfono es obligatorio")]
+            [StringLength(15, ErrorMessage = "Máximo 15 caracteres")]
+            public required string Telefono { get; set; }
 
             [StringLength(20, ErrorMessage = "Máximo 20 caracteres")]
             public string? Upp { get; set; }
@@ -217,6 +231,8 @@ namespace GanadoProBackEnd.Controllers
             public string Name { get; set; } = null!;
             public string Email { get; set; } = null!;
             public string Upp { get; set; } = null!;
+            public string Telefono { get; set; } = null!;
+
         }
 
         public class LoginDto

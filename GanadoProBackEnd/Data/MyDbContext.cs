@@ -22,26 +22,31 @@ public DbSet<Venta> Ventas { get; set; }
             modelBuilder.Entity<Animal>().HasKey(a => a.Id_Animal);
             modelBuilder.Entity<Venta>().HasKey(v => v.Id_Venta);
 
-            // Rancho -> Corrales (un rancho tiene muchos corrales)
-            modelBuilder.Entity<Rancho>()
-                .HasMany(r => r.Corrales)
-                .WithOne(c => c.Rancho)
-                .HasForeignKey(c => c.Id_Rancho)
-                .OnDelete(DeleteBehavior.Cascade);
+               // Configurar relación Rancho -> Lote
+    modelBuilder.Entity<Rancho>()
+        .HasMany(r => r.Lotes) // Nueva colección en Rancho
+        .WithOne(l => l.Rancho)
+        .HasForeignKey(l => l.Id_Rancho)
+        .OnDelete(DeleteBehavior.Cascade);
 
-            // Corrales -> Lote (un corral tiene muchos lotes)
-            modelBuilder.Entity<Corrales>()
-                .HasMany(c => c.Lotes)
-                .WithOne(l => l.corrales) // Cambia 'Corrales' por el nombre correcto de la propiedad de navegación en Lote
-                .HasForeignKey(l => l.Id_Corrales)
-                .OnDelete(DeleteBehavior.Cascade);
+    // Configurar relación Animal -> Rancho
+    modelBuilder.Entity<Animal>()
+        .HasOne(a => a.Rancho)
+        .WithMany()
+        .HasForeignKey(a => a.Id_Rancho);
 
-            // Lote -> Animal (un lote tiene muchos animales)
-            modelBuilder.Entity<Lote>()
-                .HasMany(l => l.Animales)
-                .WithOne(a => a.Lote)
-                .HasForeignKey(a => a.Id_Lote)
-                .OnDelete(DeleteBehavior.Cascade);
+    // Configurar relación Venta -> Rancho
+    modelBuilder.Entity<Venta>()
+        .HasOne(v => v.Rancho)
+        .WithMany()
+        .HasForeignKey(v => v.Id_Rancho);
+
+    // Configurar relación many-to-many Venta-Lote
+    modelBuilder.Entity<Venta>()
+        .HasMany(v => v.Lotes)
+        .WithMany(l => l.Ventas);
+
+        
 
             // User -> Rancho (un usuario tiene muchos ranchos)
             modelBuilder.Entity<User>()
@@ -49,10 +54,7 @@ public DbSet<Venta> Ventas { get; set; }
                 .WithOne(r => r.User)
                 .HasForeignKey(r => r.Id_User)
                 .OnDelete(DeleteBehavior.Cascade);
-         // Relación many-to-many entre Venta y Lote
-    modelBuilder.Entity<Venta>()
-        .HasMany(v => v.Lotes)
-        .WithMany(l => l.Ventas);
+         
 }
     }
 }
