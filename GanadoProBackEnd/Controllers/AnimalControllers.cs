@@ -29,7 +29,8 @@ namespace GanadoProBackEnd.Controllers
                     Clasificacion = a.Clasificacion,
                     Categoria = a.Categoria,
                     Raza = a.Raza,
-                    Id_Lote = a.Id_Lote ?? 0,
+                    Id_Lote = a.Id_Lote,
+
                     FechaRegistro = a.Fecha_Registro,
                     Origen = a.Origen,
                     FechaCompra = a.FechaCompra
@@ -56,7 +57,8 @@ namespace GanadoProBackEnd.Controllers
                 Clasificacion = animal.Clasificacion,
                 Categoria = animal.Categoria,
                 Raza = animal.Raza,
-                Id_Lote = animal.Id_Lote ?? 0,
+                Id_Lote = animal.Id_Lote,
+
                 FechaRegistro = animal.Fecha_Registro,
                 Origen = animal.Origen,
                 FechaCompra = animal.FechaCompra
@@ -79,7 +81,8 @@ namespace GanadoProBackEnd.Controllers
                     Clasificacion = a.Clasificacion,
                     Categoria = a.Categoria,
                     Raza = a.Raza,
-                    Id_Lote = a.Id_Lote ?? 0,
+                    Id_Lote = a.Id_Lote,
+
                     FechaRegistro = a.Fecha_Registro,
                     Origen = a.Origen,
                     FechaCompra = a.FechaCompra
@@ -87,63 +90,91 @@ namespace GanadoProBackEnd.Controllers
                 .ToListAsync();
         }
 
-        // POST: Crear animal
-        [HttpPost]
-        public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] CreateAnimalDto animalDto)
-        {
-            var lote = await _context.Lotes.FindAsync(animalDto.Id_Lote);
-            if (lote == null) return BadRequest("Lote no existe");
+    [HttpPost]
+public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] CreateAnimalDto animalDto)
+{
+    // Validar rancho
+    var rancho = await _context.Ranchos.FindAsync(animalDto.Id_Rancho);
+    if (rancho == null) return BadRequest("Rancho no existe");
 
-            var animal = new Animal
-            {
-                Arete = animalDto.Arete,
-                Peso = animalDto.Peso,
-                Sexo = animalDto.Sexo,
-                Clasificacion = animalDto.Clasificacion,
-                Categoria = animalDto.Categoria,
-                Raza = animalDto.Raza,
-                Id_Lote = animalDto.Id_Lote,
-                Origen = animalDto.Origen,
-                FechaCompra = animalDto.FechaCompra,
-                Fecha_Registro = DateTime.Now
-            };
+    // Validar lote si se proporciona
+    if (animalDto.Id_Lote.HasValue)
+    {
+        var lote = await _context.Lotes.FindAsync(animalDto.Id_Lote.Value);
+        if (lote == null) return BadRequest("Lote no existe");
+    }
 
-            await _context.Animales.AddAsync(animal);
-            await _context.SaveChangesAsync();
+    var animal = new Animal
+    {
+        Id_Rancho = animalDto.Id_Rancho,
+        Arete = animalDto.Arete,
+        Peso = animalDto.Peso,
+        Sexo = animalDto.Sexo,
+        Clasificacion = animalDto.Clasificacion,
+        Categoria = animalDto.Categoria,
+        Raza = animalDto.Raza,
+        Id_Lote = animalDto.Id_Lote, // Acepta null
+        Origen = animalDto.Origen,
+        FechaCompra = animalDto.FechaCompra,
+        Fecha_Registro = DateTime.Now
+    };
 
-            return CreatedAtAction(nameof(GetAnimal), new { id = animal.Id_Animal }, new AnimalResponseDto
-            {
-                Id_Animal = animal.Id_Animal,
-                Arete = animal.Arete,
-                Peso = animal.Peso,
-                Sexo = animal.Sexo,
-                Clasificacion = animal.Clasificacion,
-                Categoria = animal.Categoria,
-                Raza = animal.Raza,
-                Id_Lote = animal.Id_Lote ?? 0,
-                FechaRegistro = animal.Fecha_Registro,
-                Origen = animal.Origen,
-                FechaCompra = animal.FechaCompra
-            });
-        }
+    await _context.Animales.AddAsync(animal);
+    await _context.SaveChangesAsync();
 
-        // PUT: Actualizar animal
+    return CreatedAtAction(nameof(GetAnimal), new { id = animal.Id_Animal }, AnimalToResponseDto(animal));
+}
+
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateAnimal(int id, [FromBody] UpdateAnimalDto updateDto)
         {
             var animal = await _context.Animales.FindAsync(id);
             if (animal == null) return NotFound();
 
+            // Validar el lote si se proporciona
+            if (updateDto.Id_Lote.HasValue)
+            {
+                var lote = await _context.Lotes.FindAsync(updateDto.Id_Lote.Value);
+                if (lote == null) return BadRequest("Lote no existe");
+            }
+            animal.Id_Rancho = updateDto.Id_Rancho;
             animal.Peso = updateDto.Peso ?? animal.Peso;
             animal.Sexo = updateDto.Sexo ?? animal.Sexo;
             animal.Clasificacion = updateDto.Clasificacion ?? animal.Clasificacion;
             animal.Categoria = updateDto.Categoria ?? animal.Categoria;
             animal.Raza = updateDto.Raza ?? animal.Raza;
+            animal.Id_Lote = updateDto.Id_Lote ?? animal.Id_Lote; // Actualizar lote
 
             _context.Entry(animal).State = EntityState.Modified;
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        [HttpPut("asignar-lote")]
+        public async Task<IActionResult> AsignarLoteAMultiplesAnimales([FromBody] AsignarLoteDto request)
+        {
+            var lote = await _context.Lotes.FindAsync(request.Id_Lote);
+            if (lote == null) return BadRequest("Lote no existe");
+
+            var animales = await _context.Animales
+                .Where(a => request.Ids_Animales.Contains(a.Id_Animal))
+                .ToListAsync();
+
+            foreach (var animal in animales)
+            {
+                animal.Id_Lote = request.Id_Lote;
+            }
+
+            await _context.SaveChangesAsync();
+            return NoContent();
+        }
+
+        // DTO adicional
+        public class AsignarLoteDto
+        {
+            public int Id_Lote { get; set; }
+            public List<int> Ids_Animales { get; set; }
         }
 
         // DELETE: Eliminar animal
@@ -158,29 +189,53 @@ namespace GanadoProBackEnd.Controllers
 
             return NoContent();
         }
+    
+        // Helper method to map Animal to AnimalResponseDto
+        private AnimalResponseDto AnimalToResponseDto(Animal animal)
+        {
+            return new AnimalResponseDto
+            {
+                Id_Animal = animal.Id_Animal,
+                Arete = animal.Arete,
+                Peso = animal.Peso,
+                Sexo = animal.Sexo,
+                Clasificacion = animal.Clasificacion,
+                Categoria = animal.Categoria,
+                Raza = animal.Raza,
+                Id_Lote = animal.Id_Lote,
+
+                FechaRegistro = animal.Fecha_Registro,
+                Origen = animal.Origen,
+                FechaCompra = animal.FechaCompra
+            };
+        }
+       
     }
 
     // DTOs
     public class CreateAnimalDto
     {
-         public int Arete { get; set; }
-         public int Peso { get; set; }
-         public string Sexo { get; set; }
-         public string Clasificacion { get; set; }
+        public int Id_Rancho { get; set; }
+        public int Arete { get; set; }
+        public int Peso { get; set; }
+        public string Sexo { get; set; }
+        public string Clasificacion { get; set; }
         public string Categoria { get; set; }
-         public string Raza { get; set; }
-         public int Id_Lote { get; set; }
+        public string Raza { get; set; }
+        public int? Id_Lote { get; set; } // Cambiado a nullable
         public string Origen { get; set; }
         public DateTime? FechaCompra { get; set; }
     }
 
     public class UpdateAnimalDto
     {
+        public int Id_Rancho { get; set; }
         public int? Peso { get; set; }
         public string? Sexo { get; set; }
         public string? Clasificacion { get; set; }
         public string? Categoria { get; set; }
         public string? Raza { get; set; }
+        public int? Id_Lote { get; set; } // Añadido para actualizar lote
     }
 
     public class AnimalResponseDto
@@ -192,9 +247,10 @@ namespace GanadoProBackEnd.Controllers
         public string Clasificacion { get; set; }
         public string Categoria { get; set; }
         public string Raza { get; set; }
-        public int Id_Lote { get; set; }
+        public int? Id_Lote { get; set; }
         public DateTime FechaRegistro { get; set; }
         public string Origen { get; set; }
         public DateTime? FechaCompra { get; set; }
     }
+   
 }

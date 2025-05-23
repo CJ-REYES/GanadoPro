@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -22,9 +23,8 @@ namespace GanadoProBackEnd.Models
         public string Origen { get; set; } = "Comprado"; // "Comprado", "Nacido en el rancho"
         public DateTime? FechaCompra { get; set; }
         // FK a Lote
-        
         public int? Id_Lote { get; set; }      // Nueva propiedad para la relación
         public Rancho Rancho { get; set; } // Propiedad de navegación
-        public Lote Lote { get; set; }        // Propiedad de navegación
+        public Lote? Lote { get; set; }        // Propiedad de navegación
     }
 }

@@ -46,6 +46,14 @@ public DbSet<Venta> Ventas { get; set; }
         .HasMany(v => v.Lotes)
         .WithMany(l => l.Ventas);
 
+
+    modelBuilder.Entity<Animal>()
+        .HasOne(a => a.Lote)
+        .WithMany(l => l.Animales)
+        .HasForeignKey(a => a.Id_Lote)
+        .IsRequired(false); // Relación opcional
+
+
         
 
             // User -> Rancho (un usuario tiene muchos ranchos)
