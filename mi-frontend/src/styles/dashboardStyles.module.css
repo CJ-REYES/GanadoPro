@@ -1,0 +1,114 @@
+/* Estilos generales */
+.dashboardContainer {
+  padding: 2rem;
+  background-color: #f5f6fa;
+  min-height: 100vh;
+}
+
+/* Grid de métricas */
+.metricsGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+/* Tarjetas de métricas */
+.metricCard {
+  background: white;
+  padding: 1.5rem;
+  border-radius: 10px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.metricTitle {
+  color: #7f8c8d;
+  font-size: 1.1rem;
+  margin-bottom: 0.5rem;
+}
+
+.metricValue {
+  font-size: 2.2rem;
+  font-weight: 700;
+  color: #2c3e50;
+}
+
+.metricSubtext {
+  color: #95a5a6;
+  font-size: 0.9rem;
+  margin-top: 0.5rem;
+}
+
+/* Tabla de actividad */
+.activityTable {
+  width: 100%;
+  border-collapse: collapse;
+  background: white;
+  margin: 2rem 0;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+.activityTable th,
+.activityTable td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #ecf0f1;
+}
+
+.activityTable th {
+  background-color: #3498db;
+  color: white;
+}
+
+.activityType {
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+/* Estados */
+.status {
+  padding: 0.3rem 0.8rem;
+  border-radius: 15px;
+  font-size: 0.85rem;
+  display: inline-block;
+}
+
+.status.completado {
+  background-color: #27ae601a;
+  color: #27ae60;
+}
+
+.status.pendiente {
+  background-color: #f39c121a;
+  color: #f39c12;
+}
+
+.status.urgente {
+  background-color: #e74c3c1a;
+  color: #e74c3c;
+}
+
+/* Acciones rápidas */
+.quickActions {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+  margin-top: 2rem;
+}
+
+.actionButton {
+  background: #3498db;
+  color: white;
+  border: none;
+  padding: 1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: transform 0.2s;
+  font-weight: 500;
+}
+
+.actionButton:hover {
+  transform: translateY(-2px);
+}

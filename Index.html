@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GANADO PRO</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        :root {
+            --primary-color: #1C905C;
+            --secondary-color: #4BBC89;
+            --accent-color: #83CAAA;
+            --text-color: #7D7E80;
+            --background: #FFFFFF;
+            --border-color: #909090;
+        }
+
+        body {
+            margin: 0;
+            font-family: 'Inter Tight', sans-serif;
+            background-color: var(--background);
+        }
+
+        .app-bar {
+            display: flex;
+            align-items: center;
+            padding: 1rem 2rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .logo {
+            width: 50px;
+            height: 50px;
+            border-radius: 24px;
+        }
+
+        .app-title {
+            color: var(--primary-color);
+            font-size: 22px;
+            margin: 0 1rem;
+        }
+
+        .main-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: 270px;
+            background-color: var(--background);
+            padding: 2rem 1rem;
+            border-right: 1px solid var(--border-color);
+        }
+
+        .nav-button {
+            width: 200px;
+            padding: 12px 16px;
+            margin: 8px 0;
+            border: none;
+            background: none;
+            text-align: left;
+            color: var(--text-color);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .nav-button:hover {
+            background-color: #D5F1E3;
+            color: #86D1AC;
+        }
+
+        .content {
+            flex-grow: 1;
+            padding: 2rem;
+        }
+
+        .panel-title {
+            color: var(--secondary-color);
+            font-size: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stats-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .stat-card {
+            padding: 1.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+        }
+
+        .stat-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            margin: 0.5rem 0;
+            color: var(--primary-color);
+        }
+
+        .stat-description {
+            color: var(--text-color);
+            font-size: 0.9rem;
+        }
+
+        .actions-container {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .activity-table {
+            flex: 2;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .quick-actions {
+            flex: 1;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .action-button {
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: 1px solid #F6F6F8;
+            border-radius: 12px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .action-button:hover {
+            background-color: #3FD27C;
+            border-color: #90D5AB;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <nav class="app-bar">
+        <img src="https://picsum.photos/seed/552/600" class="logo" alt="Logo">
+        <h1 class="app-title">GANADO PRO</h1>
+    </nav>
+
+    <div class="main-container">
+    
+        <aside class="sidebar">
+            <button class="nav-button"><i class="fas fa-home"></i> Pagina Principal</button>
+            <button class="nav-button"><i class="fas fa-cat"></i> Ganado</button>
+            <button class="nav-button"><i class="fas fa-list"></i> Lotes</button>
+            <button class="nav-button"><i class="fas fa-shopping-cart"></i> Venta</button>
+        </aside>
+
+        <main class="content">
+            <h2 class="panel-title">PANEL PRINCIPAL GANADERO</h2>
+            
+            <div class="stats-container">
+                <!-- Total Ganado -->
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h3>TOTAL GANADO</h3>
+                        <i class="fas fa-cat" style="color: var(--accent-color)"></i>
+                    </div>
+                    <div class="stat-value">1,234</div>
+                    <p class="stat-description">Cabezas activas</p>
+                </div>
+
+                <!-- Lotes Disponibles -->
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h3>LOTES DISPONIBLES</h3>
+                        <i class="fas fa-list" style="color: var(--accent-color)"></i>
+                    </div>
+                    <div class="stat-value">20</div>
+                    <p class="stat-description">Lotes disponibles</p>
+                </div>
+
+                <!-- Total Vendido -->
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h3>TOTAL GANADO VENDIDO</h3>
+                        <i class="fas fa-cat" style="color: var(--accent-color)"></i>
+                    </div>
+                    <div class="stat-value">234</div>
+                    <p class="stat-description">Cabezas vendidas</p>
+                </div>
+
+                <!-- Lotes Vendidos -->
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <h3>TOTAL LOTE VENDIDOS</h3>
+                        <i class="fas fa-list" style="color: var(--accent-color)"></i>
+                    </div>
+                    <div class="stat-value">30</div>
+                    <p class="stat-description">Lotes vendidos</p>
+                </div>
+            </div>
+
+            <div class="actions-container">
+                <div class="activity-table">
+                    <h3>Actividad Reciente</h3>
+                    <table style="width: 100%;">
+                        <tr>
+                            <th>TIPO</th>
+                            <th>DESCRIPCIÓN</th>
+                            <th>TIEMPO</th>
+                            <th>ESTADO</th>
+                        </tr>
+                    </table>
+                </div>
+
+                <div class="quick-actions">
+                    <h3>ACCIONES RÁPIDAS</h3>
+                    <button class="action-button">Registrar Nuevo Animal</button>
+                    <button class="action-button">Registrar Nuevo Rancho</button>
+                    <button class="action-button">Crear Nuevo Lote</button>
+                    <button class="action-button">Crear Nueva Orden De Venta</button>
+                </div>
+            </div>
+        </main>
+    </div>
+</body>
+</html>

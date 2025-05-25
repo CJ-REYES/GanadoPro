@@ -4,6 +4,8 @@ using Microsoft.IdentityModel.Tokens;
 using System.Text;
 using GanadoProBackEnd.Data;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Diagnostics;
+using System.Text.Json;
 
 
 var builder = WebApplication.CreateBuilder(args);
@@ -17,6 +19,15 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 builder.Services.AddDbContext<MyDbContext>(options =>
     options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
         .LogTo(Console.WriteLine, LogLevel.Information));
+
+// Agregar CORS
+builder.Services.AddCors(options => {
+    options.AddPolicy("AllowReactFrontend", policy => {
+        policy.WithOrigins("http://localhost:3000") // Añade HTTPS si lo usas
+              .AllowAnyHeader()
+              .AllowAnyMethod();
+    });
+});
 
 // Add services to the container.
 builder.Services.AddControllersWithViews()
@@ -44,6 +55,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     });
 
 var app = builder.Build();
+app.UseExceptionHandler(errorApp =>
+{
+    errorApp.Run(async context =>
+    {
+        context.Response.StatusCode = 500;
+        context.Response.ContentType = "application/json";
+        
+        var exceptionHandler = context.Features.Get<IExceptionHandlerFeature>();
+        await context.Response.WriteAsync(JsonSerializer.Serialize(new
+        {
+            error = "Error interno",
+            detail = exceptionHandler?.Error.Message
+        }));
+    });
+});
 
 // Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
@@ -59,7 +85,7 @@ app.UseRouting();
 app.UseAuthentication();
 app.UseAuthorization();
 app.MapControllers();
-
+app.UseCors("AllowReactFrontend");
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)

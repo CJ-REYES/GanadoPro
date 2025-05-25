@@ -162,28 +162,40 @@ public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUse
             });
         }
 
-        private string GenerateJwtToken(User user)
+      private string GenerateJwtToken(User user)
+{
+    try
+    {
+        var key = _configuration["Jwt:Key"] 
+            ?? throw new ArgumentNullException("Jwt:Key no configurada");
+        
+        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
+        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+
+        var claims = new[]
         {
-            var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(
-                _configuration["Jwt:Key"]!));
-            var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
+            new Claim(JwtRegisteredClaimNames.Sub, user.Email),
+            new Claim("id", user.Id_User.ToString()),
+            new Claim(ClaimTypes.Role, "User")
+        };
 
-            var claims = new[]
-            {
-                new Claim(JwtRegisteredClaimNames.Sub, user.Email),
-                new Claim("id", user.Id_User.ToString()),
-                new Claim(ClaimTypes.Role, "User")
-            };
+        var token = new JwtSecurityToken(
+            issuer: _configuration["Jwt:Issuer"],
+            audience: _configuration["Jwt:Audience"],
+            claims: claims,
+            expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpireMinutes"])),
+            signingCredentials: credentials
+        );
 
-            var token = new JwtSecurityToken(
-                issuer: _configuration["Jwt:Issuer"],
-                audience: _configuration["Jwt:Audience"],
-                claims: claims,
-                expires: DateTime.Now.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpireMinutes"])),
-                signingCredentials: credentials);
-
-            return new JwtSecurityTokenHandler().WriteToken(token);
-        }
+        return new JwtSecurityTokenHandler().WriteToken(token);
+    }
+    catch (Exception ex)
+    {
+        // Loggear el error
+        Console.WriteLine($"Error generando token: {ex}");
+        throw; // Relanzar para devolver 500 con detalles
+    }
+}
 
         // DTOs
         public class CreateUserDto
