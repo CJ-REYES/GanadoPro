@@ -1,0 +1,55 @@
+
+    @tailwind base;
+    @tailwind components;
+    @tailwind utilities;
+
+    :root {
+      --background: 224 71.4% 4.1%; /* Dark Blue-Gray */
+      --foreground: 210 20% 98%; /* Almost White */
+      --muted: 215 27.9% 16.9%; /* Darker Blue-Gray */
+      --muted-foreground: 217.2 32.6% 50.0%; /* Lighter Muted Text */
+      --popover: 224 71.4% 4.1%;
+      --popover-foreground: 210 20% 98%;
+      --card: 220 40% 8%; /* Slightly lighter card background */
+      --card-foreground: 210 20% 98%;
+      --border: 215 27.9% 16.9%;
+      --input: 215 27.9% 16.9%;
+      --primary: 150 70% 50%; /* Vibrant Green */
+      --primary-foreground: 210 20% 98%; /* Text on primary */
+      --secondary: 217.2 32.6% 17.5%; /* Darker variant for secondary elements */
+      --secondary-foreground: 210 20% 98%;
+      --accent: 170 80% 45%; /* Teal/Aqua Accent */
+      --accent-foreground: 210 20% 98%;
+      --destructive: 0 62.8% 30.6%; /* Darker Red */
+      --destructive-foreground: 210 20% 98%;
+      --ring: 150 70% 50%; /* Green for focus rings */
+      --radius: 0.5rem;
+    }
+
+    @layer base {
+      * {
+        @apply border-border;
+      }
+      body {
+        @apply bg-gradient-to-br from-background to-slate-900 text-foreground;
+        font-feature-settings: "rlig" 1, "calt" 1;
+      }
+    }
+    
+    /* Custom scrollbar for a more modern look */
+    ::-webkit-scrollbar {
+      width: 8px;
+      height: 8px;
+    }
+    ::-webkit-scrollbar-track {
+      @apply bg-muted/50;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb {
+      @apply bg-primary/70;
+      border-radius: 10px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      @apply bg-primary;
+    }
+  
