@@ -17,15 +17,15 @@
     import { cn } from '@/lib/utils';
 
 
-    const navItems = [
-      { to: '/', label: 'Panel Principal', icon: LayoutDashboard },
-      { to: '/ganado', label: 'Ganado', icon: Package },
-      { to: '/corrales', label: 'Corrales', icon: FileText },
-      { to: '/ordenes-venta', label: 'Órdenes de Venta', icon: DollarSign },
-      { to: '/compradores', label: 'Compradores', icon: Users },
-      { to: '/productores', label: 'Productores', icon: Users },
-      { to: '/exportacion', label: 'Inventario Exportación', icon: Truck },
-    ];
+   const navItems = [
+  { to: '/layout', label: 'Panel Principal', icon: LayoutDashboard },
+  { to: '/layout/ganado', label: 'Ganado', icon: Package },
+  { to: '/layout/corrales', label: 'Corrales', icon: FileText },
+  { to: '/layout/ordenes-venta', label: 'Órdenes de Venta', icon: DollarSign },
+  { to: '/layout/compradores', label: 'Compradores', icon: Users },
+  { to: '/layout/productores', label: 'Productores', icon: Users },
+  { to: '/layout/exportacion', label: 'Inventario Exportación', icon: Truck },
+];
 
     const SidebarNavLink = ({ to, children, icon: Icon }) => (
       <NavLink

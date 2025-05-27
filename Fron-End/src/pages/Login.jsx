@@ -40,7 +40,7 @@ const Login = () => {
       if (response.ok) {
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
-        navigate("/app"); // redirigir al dashboard
+        navigate("/layout"); // redirigir al dashboard
       } else {
         setError(data.message || "Error al iniciar sesión");
       }

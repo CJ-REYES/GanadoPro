@@ -16,21 +16,21 @@ function App() {
   return (
     <>
       <Routes>
-        <Route path="/login" element={<Login />} />
+        
 
         {/* Redirección de la raíz a login */}
-        <Route path="/" element={<Navigate to="/login" />} />
+        <Route path="/" element={<Login />} />
 
         {/* Agrupación de rutas protegidas bajo Layout */}
-        <Route path="/app" element={<Layout />}>
-          <Route index element={<DashboardPage />} />
-          <Route path="ganado" element={<GanadoPage />} />
-          <Route path="corrales" element={<CorralesPage />} />
-          <Route path="ordenes-venta" element={<OrdenesVentaPage />} />
-          <Route path="compradores" element={<CompradoresPage />} />
-          <Route path="productores" element={<ProductoresPage />} />
-          <Route path="exportacion" element={<ExportacionPage />} />
-        </Route>
+      <Route path="/layout" element={<Layout />}>
+  <Route index element={<DashboardPage />} />
+  <Route path="ganado" element={<GanadoPage />} />
+  <Route path="corrales" element={<CorralesPage />} />
+  <Route path="ordenes-venta" element={<OrdenesVentaPage />} />
+  <Route path="compradores" element={<CompradoresPage />} />
+  <Route path="productores" element={<ProductoresPage />} />
+  <Route path="exportacion" element={<ExportacionPage />} />
+</Route>
       </Routes>
       <Toaster />
     </>
