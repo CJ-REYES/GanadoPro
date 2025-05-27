@@ -23,7 +23,7 @@ builder.Services.AddDbContext<MyDbContext>(options =>
 // Agregar CORS
 builder.Services.AddCors(options => {
     options.AddPolicy("AllowReactFrontend", policy => {
-        policy.WithOrigins("http://localhost:3000") // Añade HTTPS si lo usas
+        policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod();
     });
@@ -81,11 +81,11 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseStaticFiles();
-app.UseRouting();
-app.UseAuthentication();
-app.UseAuthorization();
-app.MapControllers();
-app.UseCors("AllowReactFrontend");
+app.UseRouting();                   // 1
+app.UseCors("AllowReactFrontend"); // 2 ← debe ir justo después de UseRouting
+app.UseAuthentication();           // 3
+app.UseAuthorization();            // 4
+app.MapControllers();              
 app.Run();
 
 record WeatherForecast(DateOnly Date, int TemperatureC, string? Summary)
