@@ -1,5 +1,7 @@
+// src/App.jsx
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from '@/components/ui/toaster';
 
 import Layout from '@/components/Layout';
 import DashboardPage from '@/pages/DashboardPage';
@@ -10,31 +12,96 @@ import CompradoresPage from '@/pages/CompradoresPage';
 import ProductoresPage from '@/pages/ProductoresPage';
 import ExportacionPage from '@/pages/ExportacionPage';
 import Login from '@/pages/Login';
-
-import { Toaster } from '@/components/ui/toaster';
+import ProtectedRoute from '@/components/ProtectedRoute';
+import { AuthProvider } from '@/context/AuthContext';
 
 function App() {
   return (
-    <>
+    <AuthProvider>
       <Routes>
-        
-
-        {/* Redirección de la raíz a login */}
         <Route path="/" element={<Login />} />
-
-        {/* Agrupación de rutas protegidas bajo Layout */}
-      <Route path="/layout" element={<Layout />}>
-  <Route index element={<DashboardPage />} />
-  <Route path="ganado" element={<GanadoPage />} />
-  <Route path="corrales" element={<CorralesPage />} />
-  <Route path="ordenes-venta" element={<OrdenesVentaPage />} />
-  <Route path="compradores" element={<CompradoresPage />} />
-  <Route path="productores" element={<ProductoresPage />} />
-  <Route path="exportacion" element={<ExportacionPage />} />
-</Route>
+        
+        <Route 
+          path="/layout" 
+          element={
+            <ProtectedRoute allowedRoles={['Admin', 'Business', 'User']}>
+              <Layout />
+            </ProtectedRoute>
+          }
+        >
+          <Route 
+            index 
+            element={<Navigate to="/layout/dashboard" replace />} 
+          />
+          
+          <Route 
+            path="dashboard" 
+            element={
+              <ProtectedRoute allowedRoles={['Admin', 'Business', 'User']}>
+                <DashboardPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="ganado" 
+            element={
+              <ProtectedRoute allowedRoles={['Admin', 'Business']}>
+                <GanadoPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="corrales" 
+            element={
+              <ProtectedRoute allowedRoles={['Admin', 'Business']}>
+                <CorralesPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="ordenes-venta" 
+            element={
+              <ProtectedRoute allowedRoles={['Admin', 'Business']}>
+                <OrdenesVentaPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="compradores" 
+            element={
+              <ProtectedRoute allowedRoles={['Admin', 'Business']}>
+                <CompradoresPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="productores" 
+            element={
+              <ProtectedRoute allowedRoles={['Admin', 'Business']}>
+                <ProductoresPage />
+              </ProtectedRoute>
+            } 
+          />
+          
+          <Route 
+            path="exportacion" 
+            element={
+              <ProtectedRoute allowedRoles={['Admin', 'Business']}>
+                <ExportacionPage />
+              </ProtectedRoute>
+            } 
+          />
+        </Route>
+        
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster />
-    </>
+    </AuthProvider>
   );
 }
 

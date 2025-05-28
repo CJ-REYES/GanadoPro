@@ -1,14 +1,17 @@
-
+// src/pages/Login.jsx
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
+import { useAuth } from '@/context/AuthContext';
 
 const Login = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [touched, setTouched] = useState({ email: false, password: false });
   const [error, setError] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
   const validate = () => ({
     email: email.trim() === "",
@@ -22,8 +25,12 @@ const Login = () => {
     e.preventDefault();
     setTouched({ email: true, password: true });
     setError("");
+    setIsLoading(true);
 
-    if (!isFormValid) return;
+    if (!isFormValid) {
+      setIsLoading(false);
+      return;
+    }
 
     try {
       const response = await fetch("http://localhost:5201/api/Users/login", {
@@ -32,17 +39,62 @@ const Login = () => {
         body: JSON.stringify({ email, password }),
       });
 
-      const data = await response.json();
-
-      if (response.ok) {
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-        navigate("/layout");
-      } else {
-        setError(data.message || "Error al iniciar sesión");
+      // Manejar respuesta basada en el estado HTTP
+      if (!response.ok) {
+        // Intentar obtener el mensaje de error específico del servidor
+        try {
+          const errorData = await response.json();
+          throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+        } catch (parseError) {
+          // Si no podemos parsear la respuesta de error
+          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        }
       }
-    } catch {
-      setError("No se pudo conectar con el servidor");
+
+      // Procesar respuesta exitosa
+      const data = await response.json();
+      console.log("Respuesta exitosa del servidor:", data);
+
+      // Verificar estructura con opciones flexibles
+      const token = data.Token || data.token;
+      const userResponse = data.User || data.user;
+      
+      if (!token || !userResponse) {
+        console.error("Estructura inesperada:", data);
+        throw new Error("Formato de respuesta inesperado del servidor");
+      }
+
+      // Mapear propiedades con alternativas
+      const userData = {
+        id: userResponse.Id_User || userResponse.id_User || userResponse.id,
+        name: userResponse.Name || userResponse.name,
+        email: userResponse.Email || userResponse.email,
+        rol: userResponse.Rol || userResponse.rol
+      };
+      
+      // Validar datos esenciales
+      if (!userData.id || !userData.rol) {
+        console.error("Faltan datos esenciales:", userResponse);
+        throw new Error("Faltan datos esenciales del usuario en la respuesta");
+      }
+      
+      // Guardar en localStorage y contexto
+      localStorage.setItem("token", token);
+      localStorage.setItem("user", JSON.stringify(userData));
+      login(userData);
+      
+      // Redirigir
+      navigate("/layout/dashboard");
+    } catch (err) {
+      // Manejar mensaje de error específico para credenciales inválidas
+      if (err.message.includes("401") || err.message.includes("Credenciales inválidas")) {
+        setError("Credenciales incorrectas. Por favor verifica tu email y contraseña.");
+      } else {
+        setError(err.message || "Error al iniciar sesión");
+      }
+      console.error("Error detallado:", err);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -57,8 +109,8 @@ const Login = () => {
 
             <div className="field">
               <svg className="input-icon" viewBox="0 0 24 24" fill="currentColor">
-  <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 2v.01L12 13 4 6.01V6h16zM4 18V8l8 5 8-5v10H4z"/>
-</svg>
+                <path d="M20 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2zm0 2v.01L12 13 4 6.01V6h16zM4 18V8l8 5 8-5v10H4z"/>
+              </svg>
               <input
                 type="text"
                 placeholder="Correo electrónico"
@@ -72,9 +124,8 @@ const Login = () => {
 
             <div className="field">
               <svg className="input-icon" viewBox="0 0 24 24" fill="currentColor">
-  <path d="M17 8V6a5 5 0 0 0-10 0v2H5v14h14V8h-2zM9 6a3 3 0 0 1 6 0v2H9V6zm3 5a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/>
-</svg>
-
+                <path d="M17 8V6a5 5 0 0 0-10 0v2H5v14h14V8h-2zM9 6a3 3 0 0 1 6 0v2H9V6zm3 5a2 2 0 1 1 0 4 2 2 0 0 1 0-4z"/>
+              </svg>
               <input
                 type="password"
                 placeholder="Contraseña"
@@ -87,12 +138,28 @@ const Login = () => {
             {touched.password && errors.password && <p className="text-red">La contraseña es requerida.</p>}
 
             <div className="btn">
-              <button type="submit" className="button1" disabled={!isFormValid}>
-                Iniciar Sesión
+              <button 
+                type="submit" 
+                className="button1" 
+                disabled={!isFormValid || isLoading}
+              >
+                {isLoading ? (
+                  <span className="spinner"></span>
+                ) : (
+                  "Iniciar Sesión"
+                )}
               </button>
-              
             </div>
-           
+            
+            {/* Enlace de ayuda */}
+            <div className="help-link">
+              <a href="#" onClick={(e) => {
+                e.preventDefault();
+                setError("¿Necesitas ayuda? Contacta al administrador del sistema.");
+              }}>
+                ¿Problemas para iniciar sesión?
+              </a>
+            </div>
           </form>
         </div>
       </div>
@@ -104,7 +171,7 @@ const Wrapper = styled.div`
   min-height: 100vh;
   width: 100%;
   position: relative;
-  background: linear-gradient(135deg,rgb(3, 41, 77),rgb(4, 1, 7),rgb(25, 12, 73));
+  background: linear-gradient(135deg, rgb(3, 41, 77), rgb(4, 1, 7), rgb(25, 12, 73));
   background-size: 400% 400%;
   animation: gradientBG 15s ease infinite;
   display: flex;
@@ -173,7 +240,6 @@ const Wrapper = styled.div`
     width: 100%;
     color: #d3d3d3;
     font-size: 1em;
-    
   }
 
   .btn {
@@ -190,10 +256,50 @@ const Wrapper = styled.div`
     color: white;
     font-size: 1em;
     transition: background 0.3s;
+    cursor: pointer;
+    position: relative;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 36px;
   }
 
   .button1:hover {
     background-color: black;
+  }
+
+  .button1:disabled {
+    background-color: #3a3a3a;
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+
+  /* Spinner para estado de carga */
+  .spinner {
+    width: 20px;
+    height: 20px;
+    border: 3px solid rgba(255, 255, 255, 0.3);
+    border-radius: 50%;
+    border-top-color: white;
+    animation: spin 1s ease-in-out infinite;
+  }
+
+  /* Enlace de ayuda */
+  .help-link {
+    text-align: center;
+    margin-top: 1rem;
+    a {
+      color: #00ff75;
+      text-decoration: none;
+      font-size: 0.9em;
+      &:hover {
+        text-decoration: underline;
+      }
+    }
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
   }
 
   @keyframes fadeInUp {
@@ -213,7 +319,5 @@ const Wrapper = styled.div`
     100% {background-position: 0% 50%;}
   }
 `;
-
-
 
 export default Login;
