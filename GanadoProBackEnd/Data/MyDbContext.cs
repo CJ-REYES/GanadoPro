@@ -22,6 +22,12 @@ public DbSet<Venta> Ventas { get; set; }
             modelBuilder.Entity<Animal>().HasKey(a => a.Id_Animal);
             modelBuilder.Entity<Venta>().HasKey(v => v.Id_Venta);
 
+
+                // Configurar el enum como string en la base de datos
+    modelBuilder.Entity<User>()
+        .Property(u => u.Rol)
+        .HasConversion<string>();
+
                // Configurar relación Rancho -> Lote
     modelBuilder.Entity<Rancho>()
         .HasMany(r => r.Lotes) // Nueva colección en Rancho

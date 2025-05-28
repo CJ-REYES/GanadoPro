@@ -36,40 +36,47 @@ namespace GanadoProBackEnd.Controllers
                     Name = u.Name,
                     Email = u.Email,
                     Upp = u.Upp,
-                    Telefono = u.Telefono
-
+                    Telefono = u.Telefono,
+                    Rol = u.Rol.ToString()
                 })
                 .ToListAsync();
         }
 
         // POST: api/Users
-[HttpPost]
-public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUserDto userDto)
-{
-    if (!ModelState.IsValid)
-        return BadRequest(ModelState);
+        [HttpPost]
+        public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUserDto userDto)
+        {
+            if (!ModelState.IsValid)
+                return BadRequest(ModelState);
 
-    var user = new User
-    {
-        Name = userDto.Name,
-        Email = userDto.Email,
-        Password = BCrypt.Net.BCrypt.HashPassword(userDto.Password),
-        Upp = userDto.Upp ?? string.Empty,
-        Telefono = userDto.Telefono // <-- Añade esta línea
-    };
+            if (!Enum.TryParse<UserRole>(userDto.Rol, true, out UserRole rol))
+            {
+                return BadRequest(new { message = "Rol inválido. Valores permitidos: Admin, Business, User" });
+            }
 
-    await _context.Users.AddAsync(user);
-    await _context.SaveChangesAsync();
+            var user = new User
+            {
+                Name = userDto.Name,
+                Email = userDto.Email,
+                Password = BCrypt.Net.BCrypt.HashPassword(userDto.Password),
+                Upp = userDto.Upp ?? string.Empty,
+                Telefono = userDto.Telefono,
+                Rol = rol
+            };
 
-    return CreatedAtAction(nameof(GetUser), new { id = user.Id_User }, new UserResponseDto
-    {
-        Id_User = user.Id_User,
-        Name = user.Name,
-        Email = user.Email,
-        Upp = user.Upp,
-        Telefono = user.Telefono // <-- Añade esto si es necesario
-    });
-}
+            await _context.Users.AddAsync(user);
+            await _context.SaveChangesAsync();
+
+            return CreatedAtAction(nameof(GetUser), new { id = user.Id_User }, new UserResponseDto
+            {
+                Id_User = user.Id_User,
+                Name = user.Name,
+                Email = user.Email,
+                Upp = user.Upp,
+                Telefono = user.Telefono,
+                Rol = user.Rol.ToString()
+            });
+        }
 
         // GET: api/Users/5
         [HttpGet("{id}")]
@@ -88,7 +95,8 @@ public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUse
                 Name = user.Name,
                 Email = user.Email,
                 Upp = user.Upp,
-                Telefono = user.Telefono
+                Telefono = user.Telefono,
+                Rol = user.Rol.ToString()
             };
         }
 
@@ -156,46 +164,45 @@ public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUse
                     Name = user.Name,
                     Email = user.Email,
                     Upp = user.Upp,
-                    Telefono = user.Telefono
-
+                    Telefono = user.Telefono,
+                    Rol = user.Rol.ToString()
                 }
             });
         }
 
-      private string GenerateJwtToken(User user)
-{
-    try
-    {
-        var key = _configuration["Jwt:Key"] 
-            ?? throw new ArgumentNullException("Jwt:Key no configurada");
-        
-        var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
-        var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
-
-        var claims = new[]
+        private string GenerateJwtToken(User user)
         {
-            new Claim(JwtRegisteredClaimNames.Sub, user.Email),
-            new Claim("id", user.Id_User.ToString()),
-            new Claim(ClaimTypes.Role, "User")
-        };
+            try
+            {
+                var key = _configuration["Jwt:Key"] 
+                    ?? throw new ArgumentNullException("Jwt:Key no configurada");
+                
+                var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
+                var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-        var token = new JwtSecurityToken(
-            issuer: _configuration["Jwt:Issuer"],
-            audience: _configuration["Jwt:Audience"],
-            claims: claims,
-            expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpireMinutes"])),
-            signingCredentials: credentials
-        );
+                var claims = new[]
+                {
+                    new Claim(JwtRegisteredClaimNames.Sub, user.Email),
+                    new Claim("id", user.Id_User.ToString()),
+                    new Claim(ClaimTypes.Role, user.Rol.ToString())
+                };
 
-        return new JwtSecurityTokenHandler().WriteToken(token);
-    }
-    catch (Exception ex)
-    {
-        // Loggear el error
-        Console.WriteLine($"Error generando token: {ex}");
-        throw; // Relanzar para devolver 500 con detalles
-    }
-}
+                var token = new JwtSecurityToken(
+                    issuer: _configuration["Jwt:Issuer"],
+                    audience: _configuration["Jwt:Audience"],
+                    claims: claims,
+                    expires: DateTime.UtcNow.AddMinutes(Convert.ToDouble(_configuration["Jwt:ExpireMinutes"])),
+                    signingCredentials: credentials
+                );
+
+                return new JwtSecurityTokenHandler().WriteToken(token);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error generando token: {ex}");
+                throw;
+            }
+        }
 
         // DTOs
         public class CreateUserDto
@@ -217,6 +224,9 @@ public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUse
             [StringLength(15, ErrorMessage = "Máximo 15 caracteres")]
             public required string Telefono { get; set; }
 
+            [Required(ErrorMessage = "El rol es obligatorio")]
+            public required string Rol { get; set; }
+
             public string? Upp { get; set; }
         }
 
@@ -229,6 +239,7 @@ public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUse
             [Required(ErrorMessage = "El email es obligatorio")]
             [EmailAddress(ErrorMessage = "Formato inválido")]
             public required string Email { get; set; }
+            
             [Required(ErrorMessage = "El teléfono es obligatorio")]
             [StringLength(15, ErrorMessage = "Máximo 15 caracteres")]
             public required string Telefono { get; set; }
@@ -244,7 +255,7 @@ public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUse
             public string Email { get; set; } = null!;
             public string Upp { get; set; } = null!;
             public string Telefono { get; set; } = null!;
-
+            public string Rol { get; set; } = null!;
         }
 
         public class LoginDto

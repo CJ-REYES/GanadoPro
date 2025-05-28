@@ -20,7 +20,14 @@ namespace GanadoProBackEnd.Models
         public string Password { get; set; }
 
         public string Upp { get; set; } // Corregido a "Upp"
-
+        public UserRole Rol { get; set; } // Corregido a "Rol"
         public ICollection<Rancho> Ranchos { get; set; }
     }
+
+    public enum UserRole
+{
+    Admin,
+    Business,
+    User
+}
 }
