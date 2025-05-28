@@ -4,12 +4,13 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import Layout from '@/components/Layout';
 import DashboardPage from '@/pages/DashboardPage';
 import GanadoPage from '@/pages/GanadoPage';
-import CorralesPage from '@/pages/CorralesPage';
+import CorralesPage from '@/pages/CorralesPage'; 
 import OrdenesVentaPage from '@/pages/OrdenesVentaPage';
 import CompradoresPage from '@/pages/CompradoresPage';
 import ProductoresPage from '@/pages/ProductoresPage';
 import ExportacionPage from '@/pages/ExportacionPage';
 import Login from '@/pages/Login';
+
 import { Toaster } from '@/components/ui/toaster';
 
 function App() {
