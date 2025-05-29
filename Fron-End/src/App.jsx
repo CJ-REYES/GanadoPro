@@ -14,6 +14,7 @@ import ExportacionPage from '@/pages/ExportacionPage';
 import Login from '@/pages/Login';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { AuthProvider } from '@/context/AuthContext';
+import RanchoPage from './pages/RanchoPage';
 
 function App() {
   return (
@@ -53,10 +54,18 @@ function App() {
           />
           
           <Route 
-            path="corrales" 
+            path="Lotes" 
             element={
-              <ProtectedRoute allowedRoles={['Admin', 'Business']}>
+              <ProtectedRoute allowedRoles={['Admin', 'Business','User']}>
                 <CorralesPage />
+              </ProtectedRoute>
+            } 
+          />
+                    <Route 
+            path="Ranchos" 
+            element={
+              <ProtectedRoute allowedRoles={['Admin', 'Business', 'User']}>
+                <RanchoPage />
               </ProtectedRoute>
             } 
           />

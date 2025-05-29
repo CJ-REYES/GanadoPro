@@ -31,7 +31,8 @@ const Layout = () => {
     Admin: [
       { to: '/layout/dashboard', label: 'Panel Principal', icon: LayoutDashboard },
       { to: '/layout/ganado', label: 'Ganado', icon: Package },
-      { to: '/layout/corrales', label: 'Corrales', icon: FileText },
+        { to: '/layout/Ranchos', label: 'Ranchos', icon: FileText },
+      { to: '/layout/Lotes', label: 'Lotes', icon: FileText },
       { to: '/layout/ordenes-venta', label: 'Órdenes de Venta', icon: DollarSign },
       { to: '/layout/compradores', label: 'Compradores', icon: Users },
       { to: '/layout/productores', label: 'Productores', icon: Users },
@@ -40,12 +41,15 @@ const Layout = () => {
     Business: [
       { to: '/layout/dashboard', label: 'Panel Principal', icon: LayoutDashboard },
       { to: '/layout/ganado', label: 'Ganado', icon: Package },
-      { to: '/layout/corrales', label: 'Corrales', icon: FileText },
+      { to: '/layout/Ranchos', label: 'Ranchos', icon: FileText },
+      { to: '/layout/Lotes', label: 'Lotes', icon: FileText },
       { to: '/layout/exportacion', label: 'Inventario Exportación', icon: Truck },
     ],
     User: [
       { to: '/layout/dashboard', label: 'Panel Principal', icon: LayoutDashboard },
       { to: '/layout/ganado', label: 'Ganado', icon: Package },
+      { to: '/layout/Ranchos', label: 'Ranchos', icon: FileText },
+       { to: '/layout/Lotes', label: 'Lotes', icon: FileText },
     ],
   };
 
