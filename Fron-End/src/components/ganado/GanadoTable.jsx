@@ -39,12 +39,12 @@
                 <TableHeader>
                   <TableRow>
                     <TableHead>ID</TableHead>
-                    <TableHead>Identificador</TableHead>
+                    <TableHead>Arete</TableHead>
                     <TableHead>Raza</TableHead>
                     <TableHead>Sexo</TableHead>
                     <TableHead>Edad</TableHead>
                     <TableHead>Peso</TableHead>
-                    <TableHead>Corral</TableHead>
+                    <TableHead>Lote</TableHead>
                     <TableHead>Estado</TableHead>
                     <TableHead>Registro</TableHead>
                     <TableHead className="text-right">Acciones</TableHead>
@@ -53,13 +53,14 @@
                 <TableBody>
                   {data.map((animal) => (
                     <TableRow key={animal.id} className="hover:bg-muted/30 transition-colors">
-                      <TableCell className="font-medium">{animal.id}</TableCell>
-                      <TableCell>{animal.identificador}</TableCell>
+                      
+                      <TableCell>{animal.id}</TableCell>
+                      <TableCell>{animal.arete}</TableCell>
                       <TableCell>{animal.raza}</TableCell>
                       <TableCell>{animal.sexo}</TableCell>
                       <TableCell>{animal.edad}</TableCell>
                       <TableCell>{animal.peso}</TableCell>
-                      <TableCell>{animal.corral}</TableCell>
+                      <TableCell>{animal.lote}</TableCell>
                       <TableCell>
                         <span className={getStatusClass(animal.estado)}>
                           {animal.estado}
@@ -70,11 +71,7 @@
                         <Button variant="ghost" size="icon" onClick={() => onView(animal)} className="hover:text-primary">
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {animal.estado !== 'Vendido' && (
-                          <Button variant="ghost" size="icon" onClick={() => onEdit(animal)} className="hover:text-yellow-500">
-                            <Edit className="h-4 w-4" />
-                          </Button>
-                        )}
+                        
                         <Button variant="ghost" size="icon" onClick={() => onDelete(animal.id)} className="hover:text-destructive">
                           <Trash2 className="h-4 w-4" />
                         </Button>
