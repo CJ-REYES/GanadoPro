@@ -6,7 +6,6 @@ import { Toaster } from '@/components/ui/toaster';
 import Layout from '@/components/Layout';
 import DashboardPage from '@/pages/DashboardPage';
 import GanadoPage from '@/pages/GanadoPage';
-import CorralesPage from '@/pages/CorralesPage'; 
 import OrdenesVentaPage from '@/pages/OrdenesVentaPage';
 import CompradoresPage from '@/pages/CompradoresPage';
 import ProductoresPage from '@/pages/ProductoresPage';
@@ -15,6 +14,7 @@ import Login from '@/pages/Login';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import { AuthProvider } from '@/context/AuthContext';
 import RanchoPage from './pages/RanchoPage';
+import LotesPage from './pages/LotesPage';
 
 function App() {
   return (
@@ -57,7 +57,7 @@ function App() {
             path="Lotes" 
             element={
               <ProtectedRoute allowedRoles={['Admin', 'Business','User']}>
-                <CorralesPage />
+                <LotesPage />
               </ProtectedRoute>
             } 
           />

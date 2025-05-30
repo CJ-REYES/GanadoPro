@@ -15,13 +15,13 @@ namespace GanadoProBackEnd.Controllers
 
         public LotesController(MyDbContext context) => _context = context;
 
-      [HttpGet]
+[HttpGet]
 public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes()
 {
     return await _context.Lotes
         .Include(l => l.Rancho)
-            .ThenInclude(r => r.User) // Cargar User
-        .Include(l => l.Animales)
+            .ThenInclude(r => r.User)
+        .Include(l => l.Animales) // Incluir animales
         .Select(l => new LoteResponseDto
         {
             Id_Lote = l.Id_Lote,
@@ -29,10 +29,18 @@ public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes()
             Comunidad = l.Rancho.Ubicacion,
             Remo = l.Remo,
             Estado = l.Estado,
-            UPP = l.Rancho.User.Upp, // Asegurar que User no sea null
+            UPP = l.Rancho.User.Upp,
             TotalAnimales = l.Animales.Count,
             FechaCreacion = l.Fecha_Creacion,
-            FechaEntrada = l.Fecha_Entrada
+            FechaEntrada = l.Fecha_Entrada,
+            Animales = l.Animales.Select(a => new AnimalEnLoteDto
+            {
+                Id = a.Id_Animal,
+                Arete = a.Arete.ToString(),
+                Sexo = a.Sexo,
+                Edad_Meses = a.Edad_Meses, // Asegúrate de tener esta propiedad o calcularla
+                Peso = a.Peso
+            }).ToList()
         })
         .ToListAsync();
 }
@@ -171,16 +179,27 @@ public class CreateLoteDto
         public string? Estado { get; set; }
     }
 
+// En LoteResponseDto
 public class LoteResponseDto
 {
     public int Id_Lote { get; set; }
     public string NombreRancho { get; set; }
-    public string Comunidad { get; set; } // Ubicación del rancho
+    public string Comunidad { get; set; }
     public int Remo { get; set; }
-    public string UPP { get; set; }
     public string Estado { get; set; }
+    public string UPP { get; set; }
     public int TotalAnimales { get; set; }
     public DateTime FechaCreacion { get; set; }
     public DateTime FechaEntrada { get; set; }
+    public List<AnimalEnLoteDto> Animales { get; set; } // Nueva propiedad
+}
+
+public class AnimalEnLoteDto
+{
+    public int Id { get; set; }
+    public string Arete { get; set; }
+    public string Sexo { get; set; }
+    public int Edad_Meses { get; set; }
+    public double Peso { get; set; }
 }
 }
