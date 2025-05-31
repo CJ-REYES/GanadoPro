@@ -4,6 +4,7 @@ using GanadoProBackEnd.Data;
 using GanadoProBackEnd.Models;
 using GanadoProBackEnd.DTOs;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -18,31 +19,39 @@ namespace GanadoProBackEnd.Controllers
 [HttpGet]
 public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes()
 {
+    
+    // Get current user ID from token
+    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    if (string.IsNullOrEmpty(userId)) 
+        return Unauthorized();
+
+
     return await _context.Lotes
         .Include(l => l.Rancho)
             .ThenInclude(r => r.User)
-        .Include(l => l.Animales) // Incluir animales
+        .Include(l => l.Animales)
+        .Where(l => l.Rancho.Id_User == int.Parse(userId)) // ADD THIS FILTER
         .Select(l => new LoteResponseDto
-        {
-            Id_Lote = l.Id_Lote,
-            NombreRancho = l.Rancho.NombreRancho,
-            Comunidad = l.Rancho.Ubicacion,
-            Remo = l.Remo,
-            Estado = l.Estado,
-            UPP = l.Rancho.User.Upp,
-            TotalAnimales = l.Animales.Count,
-            FechaCreacion = l.Fecha_Creacion,
-            FechaEntrada = l.Fecha_Entrada,
-            Animales = l.Animales.Select(a => new AnimalEnLoteDto
-            {
-                Id = a.Id_Animal,
-                Arete = a.Arete.ToString(),
-                Sexo = a.Sexo,
-                Edad_Meses = a.Edad_Meses, // Asegúrate de tener esta propiedad o calcularla
-                Peso = a.Peso
-            }).ToList()
-        })
-        .ToListAsync();
+                                {
+                                    Id_Lote = l.Id_Lote,
+                                    NombreRancho = l.Rancho.NombreRancho,
+                                    Comunidad = l.Rancho.Ubicacion,
+                                    Remo = l.Remo,
+                                    Estado = l.Estado,
+                                    UPP = l.Rancho.User.Upp,
+                                    TotalAnimales = l.Animales.Count,
+                                    FechaCreacion = l.Fecha_Creacion,
+                                    FechaEntrada = l.Fecha_Entrada,
+                                    Animales = l.Animales.Select(a => new AnimalEnLoteDto
+                                    {
+                                        Id = a.Id_Animal,
+                                        Arete = a.Arete.ToString(),
+                                        Sexo = a.Sexo,
+                                        Edad_Meses = a.Edad_Meses, // Asegúrate de tener esta propiedad o calcularla
+                                        Peso = a.Peso
+                                    }).ToList()
+                                })
+                                .ToListAsync();
 }
 
         // GET: Lotes disponibles para venta

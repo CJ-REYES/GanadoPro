@@ -4,6 +4,7 @@ using GanadoProBackEnd.Data;
 using GanadoProBackEnd.Models;
 using GanadoProBackEnd.DTOs;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -19,21 +20,28 @@ namespace GanadoProBackEnd.Controllers
 [HttpGet]
 public async Task<ActionResult<IEnumerable<RanchoResponseDto>>> GetRanchos()
 {
+
+    // Get current user ID from token
+    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    if (string.IsNullOrEmpty(userId)) 
+        return Unauthorized();
+        
     return await _context.Ranchos
-        .Include(r => r.User) // ¡Agregar esta línea!
+        .Where(r => r.Id_User == int.Parse(userId)) // ADD THIS FILTER
+        .Include(r => r.User)
         .Include(r => r.Lotes)
         .Select(r => new RanchoResponseDto
-        {
-            Id_Rancho = r.Id_Rancho,
-            Id_User = r.Id_User, // Mapear directamente desde el rancho
-            NombreRancho = r.NombreRancho,
-            Ubicacion = r.Ubicacion,
-            Propietario = r.User.Name,
-            Telefono = r.User.Telefono,
-            Email = r.User.Email, // Ahora sí tendrá valor
-            TotalLotes = r.Lotes.Count
-        })
-        .ToListAsync();
+                {
+                    Id_Rancho = r.Id_Rancho,
+                    Id_User = r.Id_User, // Mapear directamente desde el rancho
+                    NombreRancho = r.NombreRancho,
+                    Ubicacion = r.Ubicacion,
+                    Propietario = r.User.Name,
+                    Telefono = r.User.Telefono,
+                    Email = r.User.Email, // Ahora sí tendrá valor
+                    TotalLotes = r.Lotes.Count
+                })
+                .ToListAsync();
 }
 
         // GET: Rancho por ID
