@@ -5,6 +5,7 @@ using GanadoProBackEnd.Models;
 using GanadoProBackEnd.DTOs;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -18,6 +19,8 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: Todos los ranchos
 [HttpGet]
+[Authorize]
+
 public async Task<ActionResult<IEnumerable<RanchoResponseDto>>> GetRanchos()
 {
 
@@ -45,7 +48,9 @@ public async Task<ActionResult<IEnumerable<RanchoResponseDto>>> GetRanchos()
 }
 
         // GET: Rancho por ID
-[HttpGet("{id}")]
+        [HttpGet("{id}")]
+[Authorize]
+
 public async Task<ActionResult<RanchoResponseDto>> GetRancho(int id)
 {
     var rancho = await _context.Ranchos
@@ -69,7 +74,9 @@ public async Task<ActionResult<RanchoResponseDto>> GetRancho(int id)
 }
 
         // POST: Crear rancho
-[HttpPost]
+        [HttpPost]
+[Authorize]
+
 public async Task<ActionResult<RanchoResponseDto>> CreateRancho([FromBody] CreateRanchoDto ranchoDto)
 {
     var user = await _context.Users.FindAsync(ranchoDto.Id_User);
@@ -101,6 +108,8 @@ public async Task<ActionResult<RanchoResponseDto>> CreateRancho([FromBody] Creat
 
         // PUT: Actualizar rancho
         [HttpPut("{id}")]
+        [Authorize]
+
         public async Task<IActionResult> UpdateRancho(int id, [FromBody] UpdateRanchoDto updateDto)
         {
             var rancho = await _context.Ranchos.FindAsync(id);
@@ -108,7 +117,7 @@ public async Task<ActionResult<RanchoResponseDto>> CreateRancho([FromBody] Creat
 
             rancho.NombreRancho = updateDto.NombreRancho ?? rancho.NombreRancho;
             rancho.Ubicacion = updateDto.Ubicacion ?? rancho.Ubicacion;
-            
+
 
             _context.Entry(rancho).State = EntityState.Modified;
             await _context.SaveChangesAsync();
@@ -118,6 +127,8 @@ public async Task<ActionResult<RanchoResponseDto>> CreateRancho([FromBody] Creat
 
         // DELETE: Eliminar rancho
         [HttpDelete("{id}")]
+        [Authorize]
+
         public async Task<IActionResult> DeleteRancho(int id)
         {
             var rancho = await _context.Ranchos

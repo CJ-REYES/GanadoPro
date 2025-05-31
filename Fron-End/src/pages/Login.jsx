@@ -25,73 +25,82 @@ const Login = () => {
     e.preventDefault();
     setTouched({ email: true, password: true });
     setError("");
-    setIsLoading(true);
-
+    
     if (!isFormValid) {
-      setIsLoading(false);
       return;
     }
 
+    setIsLoading(true);
+
     try {
-      const response = await fetch("http://localhost:5201/api/Users/login", {
+      // Use environment variable for API base URL
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5201/';
+const response = await fetch(`${API_BASE_URL}api/Users/login`, {
+
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        headers: { 
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ 
+          Email: email,
+          Password: password 
+        }),
       });
 
-      // Manejar respuesta basada en el estado HTTP
+      // Handle HTTP errors first
       if (!response.ok) {
-        // Intentar obtener el mensaje de error específico del servidor
-        try {
-          const errorData = await response.json();
-          throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
-        } catch (parseError) {
-          // Si no podemos parsear la respuesta de error
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
+        // Special handling for 401 Unauthorized
+        if (response.status === 401) {
+          throw new Error("Credenciales inválidas");
         }
+        
+        // Handle non-JSON responses
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          const text = await response.text();
+          throw new Error(text || `Error ${response.status}: ${response.statusText}`);
+        }
+        
+        const errorData = await response.json();
+        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
       }
 
-      // Procesar respuesta exitosa
+      // Process successful response
       const data = await response.json();
-      console.log("Respuesta exitosa del servidor:", data);
-
-      // Verificar estructura con opciones flexibles
-      const token = data.Token || data.token;
-      const userResponse = data.User || data.user;
+      const token = data.token || data.Token;
+      const userResponse = data.user || data.User;
       
       if (!token || !userResponse) {
-        console.error("Estructura inesperada:", data);
         throw new Error("Formato de respuesta inesperado del servidor");
       }
 
-      // Mapear propiedades con alternativas
       const userData = {
-        id: userResponse.Id_User || userResponse.id_User || userResponse.id,
-        name: userResponse.Name || userResponse.name,
-        email: userResponse.Email || userResponse.email,
-        rol: userResponse.Rol || userResponse.rol
+        id: userResponse.id || userResponse.Id_User,
+        name: userResponse.name || userResponse.Name,
+        email: userResponse.email || userResponse.Email,
+        rol: userResponse.rol || userResponse.Rol
       };
       
-      // Validar datos esenciales
       if (!userData.id || !userData.rol) {
-        console.error("Faltan datos esenciales:", userResponse);
-        throw new Error("Faltan datos esenciales del usuario en la respuesta");
+        throw new Error("Faltan datos esenciales del usuario");
       }
       
-      // Guardar en localStorage y contexto
       localStorage.setItem("token", token);
       localStorage.setItem("user", JSON.stringify(userData));
       login(userData);
-      
-      // Redirigir
       navigate("/layout/dashboard");
     } catch (err) {
-      // Manejar mensaje de error específico para credenciales inválidas
-      if (err.message.includes("401") || err.message.includes("Credenciales inválidas")) {
-        setError("Credenciales incorrectas. Por favor verifica tu email y contraseña.");
+      let errorMessage = "Error al iniciar sesión";
+      
+      if (err.message.includes("Failed to fetch")) {
+        errorMessage = "Error de conexión con el servidor";
+      } else if (err.message.includes("401") || err.message.includes("Credenciales")) {
+        errorMessage = "Credenciales incorrectas. Por favor verifica tu email y contraseña.";
       } else {
-        setError(err.message || "Error al iniciar sesión");
+        errorMessage = err.message;
       }
+      
+      setError(errorMessage);
       console.error("Error detallado:", err);
     } finally {
       setIsLoading(false);

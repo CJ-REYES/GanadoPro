@@ -1,6 +1,5 @@
-// src/components/Layout.jsx
 import React, { useState, useEffect } from 'react';
-import { NavLink, Outlet, useLocation, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useLocation } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { 
   LayoutDashboard, Package, DollarSign, Users, Truck, FileText, Settings, Sun, Moon 
@@ -24,14 +23,13 @@ const Layout = () => {
   const [isDarkMode, setIsDarkMode] = useState(true);
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
-  const navigate = useNavigate();
 
   // Definir navItems basados en el rol del usuario
   const navItemsByRole = {
     Admin: [
       { to: '/layout/dashboard', label: 'Panel Principal', icon: LayoutDashboard },
       { to: '/layout/ganado', label: 'Ganado', icon: Package },
-        { to: '/layout/Ranchos', label: 'Ranchos', icon: FileText },
+      { to: '/layout/Ranchos', label: 'Ranchos', icon: FileText },
       { to: '/layout/Lotes', label: 'Lotes', icon: FileText },
       { to: '/layout/ordenes-venta', label: 'Órdenes de Venta', icon: DollarSign },
       { to: '/layout/compradores', label: 'Compradores', icon: Users },
@@ -49,7 +47,7 @@ const Layout = () => {
       { to: '/layout/dashboard', label: 'Panel Principal', icon: LayoutDashboard },
       { to: '/layout/ganado', label: 'Ganado', icon: Package },
       { to: '/layout/Ranchos', label: 'Ranchos', icon: FileText },
-       { to: '/layout/Lotes', label: 'Lotes', icon: FileText },
+      { to: '/layout/Lotes', label: 'Lotes', icon: FileText },
     ],
   };
 
@@ -60,7 +58,7 @@ const Layout = () => {
     const root = window.document.documentElement;
     if (isDarkMode) {
       root.classList.add('dark');
-      root.style.setProperty('--background', '224 71.4% 4.1%');
+       root.style.setProperty('--background', '224 71.4% 4.1%');
       root.style.setProperty('--foreground', '210 20% 98%');
       root.style.setProperty('--muted', '215 27.9% 16.9%');
       root.style.setProperty('--muted-foreground', '217.2 32.6% 50.0%');
@@ -79,6 +77,7 @@ const Layout = () => {
       root.style.setProperty('--destructive', '0 62.8% 30.6%');
       root.style.setProperty('--destructive-foreground', '210 20% 98%');
       root.style.setProperty('--ring', '150 70% 50%');
+      // ... (existing dark mode styles)
     } else {
       root.classList.remove('dark');
       root.style.setProperty('--background', '0 0% 100%'); 
@@ -100,9 +99,9 @@ const Layout = () => {
       root.style.setProperty('--destructive', '0 84.2% 60.2%'); 
       root.style.setProperty('--destructive-foreground', '210 40% 98%'); 
       root.style.setProperty('--ring', '150 60% 45%'); 
+      // ... (existing light mode styles)
     }
     
-    // Simular carga de datos
     const timer = setTimeout(() => {
       setIsLoading(false);
     }, 500);
@@ -115,8 +114,19 @@ const Layout = () => {
   };
 
   const handleLogout = () => {
-    logout();
-    navigate('/');
+    const success = logout();
+    if (success) {
+      // Clear all user-specific data
+      const keys = Object.keys(localStorage);
+      keys.forEach(key => {
+        if (key.startsWith('user_') || key.startsWith('app_')) {
+          localStorage.removeItem(key);
+        }
+      });
+      
+      // Redirect to login
+      window.location.href = '/login';
+    }
   };
   
   const SidebarNavLink = ({ to, children, icon: Icon }) => (

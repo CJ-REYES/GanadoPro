@@ -5,6 +5,7 @@ using GanadoProBackEnd.Models;
 using GanadoProBackEnd.DTOs;
 using System.ComponentModel.DataAnnotations;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -16,7 +17,9 @@ namespace GanadoProBackEnd.Controllers
 
         public LotesController(MyDbContext context) => _context = context;
 
-[HttpGet]
+        [HttpGet]
+[Authorize]
+
 public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes()
 {
     
@@ -56,6 +59,8 @@ public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes()
 
         // GET: Lotes disponibles para venta
         [HttpGet("disponibles")]
+        [Authorize]
+
         public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotesDisponibles()
         {
             return await _context.Lotes
@@ -72,7 +77,9 @@ public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes()
         }
 
         // POST: Crear lote
-[HttpPost]
+        [HttpPost]
+[Authorize]
+
 public async Task<ActionResult<LoteResponseDto>> CreateLote([FromBody] CreateLoteDto loteDto)
 {
     // Incluir el User al buscar el Rancho
@@ -111,6 +118,8 @@ public async Task<ActionResult<LoteResponseDto>> CreateLote([FromBody] CreateLot
 
         // GET: api/Lotes/{id}
         [HttpGet("{id}")]
+        [Authorize]
+
         public async Task<ActionResult<LoteResponseDto>> GetLote(int id)
         {
             var lote = await _context.Lotes
@@ -137,12 +146,14 @@ public async Task<ActionResult<LoteResponseDto>> CreateLote([FromBody] CreateLot
 
         // PUT: Actualizar lote
         [HttpPut("{id}")]
+        [Authorize]
+
         public async Task<IActionResult> UpdateLote(int id, [FromBody] UpdateLoteDto updateDto)
         {
             var lote = await _context.Lotes.FindAsync(id);
             if (lote == null) return NotFound();
 
-           
+
             lote.Estado = updateDto.Estado ?? lote.Estado;
 
             _context.Entry(lote).State = EntityState.Modified;
@@ -153,6 +164,8 @@ public async Task<ActionResult<LoteResponseDto>> CreateLote([FromBody] CreateLot
 
         // DELETE: Eliminar lote
         [HttpDelete("{id}")]
+        [Authorize]
+
         public async Task<IActionResult> DeleteLote(int id)
         {
             var lote = await _context.Lotes
