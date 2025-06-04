@@ -1,62 +1,45 @@
+// src/context/AuthContext.jsx
 import { createContext, useContext, useState, useEffect } from 'react';
+import { getToken, getUser, clearToken, clearUser } from '@/hooks/useToken';
 
 const AuthContext = createContext();
-
-// Función para validar la estructura del usuario
-const isValidUser = (user) => {
-  return user && 
-         typeof user.id === 'number' && 
-         typeof user.rol === 'string' && 
-         ['Admin', 'Business', 'User'].includes(user.rol);
-};
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
-    const storedUser = localStorage.getItem('user');
+    const storedUser = getUser();
+    const storedToken = getToken();
     
-    if (storedUser) {
+    if (storedUser && storedToken) {
       try {
-        const parsedUser = JSON.parse(storedUser);
-        
-        if (isValidUser(parsedUser)) {
-          setUser(parsedUser);
-        } else {
-          console.warn("Usuario inválido en localStorage. Limpiando...", parsedUser);
-          clearUserData();
-        }
+        setUser(storedUser);
       } catch (error) {
-        console.error("Error al parsear usuario de localStorage:", error);
-        clearUserData();
+        console.error("Error al obtener usuario de localStorage:", error);
+        clearAuthData();
       }
     }
     setLoading(false);
   }, []);
 
-  // Función centralizada para limpiar datos de usuario
-  const clearUserData = () => {
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    localStorage.removeItem('currentRanchoId');
+  // Función centralizada para limpiar datos de autenticación
+  const clearAuthData = () => {
+    clearToken();
+    clearUser();
     setUser(null);
   };
 
-  const login = (userData, token) => {
-    if (!isValidUser(userData)) {
-      console.error("Datos de usuario inválidos al iniciar sesión:", userData);
-      return;
-    }
-    
+  const login = (token, userData) => {
     setUser(userData);
+    // Guardar en localStorage
     localStorage.setItem('user', JSON.stringify(userData));
     localStorage.setItem('token', token);
   };
 
   const logout = () => {
-    clearUserData();
-    return true; // Indica que el logout fue exitoso
+    clearAuthData();
+    return true;
   };
 
   return (
@@ -65,7 +48,7 @@ export const AuthProvider = ({ children }) => {
       login, 
       logout, 
       loading,
-      isAuthenticated: !!user && isValidUser(user)
+      isAuthenticated: !!user
     }}>
       {children}
     </AuthContext.Provider>

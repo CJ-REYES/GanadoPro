@@ -3,6 +3,9 @@ import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import styled from "styled-components";
 import { useAuth } from '@/context/AuthContext';
+import { setToken, clearToken, setUser } from '@/hooks/useToken';
+import { toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 const Login = () => {
   const [email, setEmail] = useState("");
@@ -10,98 +13,94 @@ const Login = () => {
   const [touched, setTouched] = useState({ email: false, password: false });
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  
   const navigate = useNavigate();
   const { login } = useAuth();
 
-  const validate = () => ({
-    email: email.trim() === "",
-    password: password.trim() === "",
-  });
+  // Validaciones del formulario
+  const errors = {
+    email: !email,
+    password: !password,
+  };
 
-  const errors = validate();
-  const isFormValid = !errors.email && !errors.password;
+  const isFormValid = email && password;
 
-  const handleLogin = async (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setTouched({ email: true, password: true });
     setError("");
-    
-    if (!isFormValid) {
-      return;
-    }
+
+    if (!isFormValid) return;
 
     setIsLoading(true);
+    clearToken(); // Limpiamos cualquier token previo
 
     try {
-      // Use environment variable for API base URL
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5201/';
-const response = await fetch(`${API_BASE_URL}api/Users/login`, {
-
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ 
-          Email: email,
-          Password: password 
-        }),
+      const res = await fetch('http://localhost:5201/api/Users/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, password }),
       });
 
-      // Handle HTTP errors first
-      if (!response.ok) {
-        // Special handling for 401 Unauthorized
-        if (response.status === 401) {
-          throw new Error("Credenciales inválidas");
-        }
-        
-        // Handle non-JSON responses
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          const text = await response.text();
-          throw new Error(text || `Error ${response.status}: ${response.statusText}`);
-        }
-        
-        const errorData = await response.json();
-        throw new Error(errorData.message || `Error ${response.status}: ${response.statusText}`);
+      // Manejar errores de conexión
+      if (res.status === 0) {
+        throw new Error("Error de conexión con el servidor");
       }
 
-      // Process successful response
-      const data = await response.json();
-      const token = data.token || data.Token;
-      const userResponse = data.user || data.User;
+      // Manejar errores HTTP
+      if (!res.ok) {
+        // Intentar parsear error como JSON, si falla usar texto plano
+        try {
+          const errorData = await res.json();
+          throw new Error(errorData.message || `Error ${res.status}: ${res.statusText}`);
+        } catch (jsonError) {
+          const errorText = await res.text();
+          throw new Error(errorText || `Error ${res.status}: ${res.statusText}`);
+        }
+      }
+
+      // Parsear respuesta exitosa
+      const data = await res.json();
       
-      if (!token || !userResponse) {
-        throw new Error("Formato de respuesta inesperado del servidor");
+      // Validar estructura de la respuesta (con propiedades en mayúscula)
+      if (!data.Token || !data.User) {
+        throw new Error("Respuesta del servidor inválida");
       }
-
-      const userData = {
-        id: userResponse.id || userResponse.Id_User,
-        name: userResponse.name || userResponse.Name,
-        email: userResponse.email || userResponse.Email,
-        rol: userResponse.rol || userResponse.Rol
+      
+      // Normalizar el objeto de usuario
+      const normalizedUser = {
+        id: data.User.Id_User,
+        name: data.User.Name,
+        email: data.User.Email,
+        upp: data.User.Upp,
+        telefono: data.User.Telefono,
+        rol: data.User.Rol
       };
       
-      if (!userData.id || !userData.rol) {
-        throw new Error("Faltan datos esenciales del usuario");
-      }
+      // Guardar token y usuario
+      setToken(data.Token);
+      setUser(normalizedUser);
       
-      localStorage.setItem("token", token);
-      localStorage.setItem("user", JSON.stringify(userData));
-      login(userData);
-      navigate("/layout/dashboard");
-    } catch (err) {
-      let errorMessage = "Error al iniciar sesión";
+      // Actualizar contexto de autenticación
+      login(data.Token, normalizedUser);
+
+      // Mostrar notificación de éxito
+      toast.success('Sesión iniciada correctamente', {
+        position: "top-right",
+        autoClose: 3000,
+      });
       
-      if (err.message.includes("Failed to fetch")) {
-        errorMessage = "Error de conexión con el servidor";
-      } else if (err.message.includes("401") || err.message.includes("Credenciales")) {
-        errorMessage = "Credenciales incorrectas. Por favor verifica tu email y contraseña.";
-      } else {
-        errorMessage = err.message;
-      }
+      // Redirigir al dashboard
+      navigate('/layout/dashboard', { replace: true });
+    } catch (error) {
+      console.error("Login error:", error);
+      setError(error.message);
       
-      setError(errorMessage);
-      console.error("Error detallado:", err);
+      // Mostrar notificación de error
+      toast.error(`Error: ${error.message}`, {
+        position: "top-right",
+        autoClose: 5000,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -111,10 +110,10 @@ const response = await fetch(`${API_BASE_URL}api/Users/login`, {
     <Wrapper>
       <div className="card">
         <div className="card2">
-          <form className="form" onSubmit={handleLogin}>
-            <p id="heading">Login</p>
+          <form className="form" onSubmit={handleSubmit}>
+            <p id="heading">Iniciar Sesión</p>
 
-            {error && <p className="text-red">{error}</p>}
+            {error && <p className="error-message">{error}</p>}
 
             <div className="field">
               <svg className="input-icon" viewBox="0 0 24 24" fill="currentColor">
@@ -129,7 +128,7 @@ const response = await fetch(`${API_BASE_URL}api/Users/login`, {
                 onBlur={() => setTouched({ ...touched, email: true })}
               />
             </div>
-            {touched.email && errors.email && <p className="text-red">El correo es requerido.</p>}
+            {touched.email && errors.email && <p className="error-message">El correo es requerido.</p>}
 
             <div className="field">
               <svg className="input-icon" viewBox="0 0 24 24" fill="currentColor">
@@ -144,7 +143,7 @@ const response = await fetch(`${API_BASE_URL}api/Users/login`, {
                 onBlur={() => setTouched({ ...touched, password: true })}
               />
             </div>
-            {touched.password && errors.password && <p className="text-red">La contraseña es requerida.</p>}
+            {touched.password && errors.password && <p className="error-message">La contraseña es requerida.</p>}
 
             <div className="btn">
               <button 
@@ -160,7 +159,6 @@ const response = await fetch(`${API_BASE_URL}api/Users/login`, {
               </button>
             </div>
             
-            {/* Enlace de ayuda */}
             <div className="help-link">
               <a href="#" onClick={(e) => {
                 e.preventDefault();
@@ -218,12 +216,15 @@ const Wrapper = styled.div`
     margin-bottom: 1em;
     color: white;
     font-size: 1.7em;
+    font-weight: 600;
   }
 
-  .text-red {
-    color: red;
+  .error-message {
+    color: #ff4d4d;
     text-align: center;
-    margin-bottom: 0.5em;
+    margin: 0.5em 0;
+    font-size: 0.9em;
+    min-height: 1.5em;
   }
 
   .field {
@@ -231,9 +232,14 @@ const Wrapper = styled.div`
     align-items: center;
     gap: 0.5em;
     background-color: #171717;
-    padding: 0.6em 1em;
+    padding: 0.8em 1.2em;
     border-radius: 25px;
     box-shadow: inset 2px 5px 10px rgb(5, 5, 5);
+    transition: box-shadow 0.3s;
+  }
+
+  .field:focus-within {
+    box-shadow: inset 2px 5px 10px rgb(5, 5, 5), 0 0 0 2px #00ff75;
   }
 
   .input-icon {
@@ -247,8 +253,11 @@ const Wrapper = styled.div`
     border: none;
     outline: none;
     width: 100%;
-    color: #d3d3d3;
+    color: #f0f0f0;
     font-size: 1em;
+    &::placeholder {
+      color: #888;
+    }
   }
 
   .btn {
@@ -258,32 +267,35 @@ const Wrapper = styled.div`
   }
 
   .button1 {
-    padding: 0.6em 2em;
-    border-radius: 5px;
+    padding: 0.8em 2.5em;
+    border-radius: 30px;
     border: none;
-    background-color: #252525;
+    background: linear-gradient(to right, #00ff75, #3700ff);
     color: white;
     font-size: 1em;
-    transition: background 0.3s;
+    font-weight: 500;
+    transition: all 0.3s;
     cursor: pointer;
     position: relative;
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 36px;
+    min-height: 44px;
+    width: 100%;
+    max-width: 280px;
   }
 
-  .button1:hover {
-    background-color: black;
+  .button1:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 15px rgba(0, 255, 117, 0.4);
   }
 
   .button1:disabled {
-    background-color: #3a3a3a;
+    background: #3a3a3a;
     cursor: not-allowed;
     opacity: 0.7;
   }
 
-  /* Spinner para estado de carga */
   .spinner {
     width: 20px;
     height: 20px;
@@ -293,15 +305,16 @@ const Wrapper = styled.div`
     animation: spin 1s ease-in-out infinite;
   }
 
-  /* Enlace de ayuda */
   .help-link {
     text-align: center;
-    margin-top: 1rem;
+    margin-top: 1.5rem;
     a {
       color: #00ff75;
       text-decoration: none;
       font-size: 0.9em;
+      transition: color 0.2s;
       &:hover {
+        color: #00cc66;
         text-decoration: underline;
       }
     }

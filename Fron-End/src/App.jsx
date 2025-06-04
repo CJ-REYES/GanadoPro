@@ -1,7 +1,8 @@
 // src/App.jsx
 import React from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from '@/components/ui/toaster';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 import Layout from '@/components/Layout';
 import DashboardPage from '@/pages/DashboardPage';
@@ -61,7 +62,8 @@ function App() {
               </ProtectedRoute>
             } 
           />
-                    <Route 
+          
+          <Route 
             path="Ranchos" 
             element={
               <ProtectedRoute allowedRoles={['Admin', 'Business', 'User']}>
@@ -109,7 +111,20 @@ function App() {
         
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
-      <Toaster />
+      
+      {/* ToastContainer para mostrar notificaciones */}
+      <ToastContainer 
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
     </AuthProvider>
   );
 }

@@ -15,7 +15,8 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 import RanchoForm from '@/components/Ranchos/RanchoForm';
-import useToken from '@/hooks/useToken'; // Importa el hook useToken
+import { getToken, setToken, clearToken } from '@/hooks/useToken';
+
 
 // Hook useLocalStorage modificado para manejar objetos y cadenas
 const useLocalStorage = (key, initialValue) => {

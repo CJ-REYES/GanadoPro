@@ -24,7 +24,8 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from '@/components/ui/separator';
 import { useToast } from "@/components/ui/use-toast";
-import useToken from '@/hooks/useToken';
+import { getToken, setToken, clearToken } from '@/hooks/useToken';
+
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { cn } from '@/lib/utils';
 
@@ -256,7 +257,7 @@ const LotesPage = () => {
     if (!token) return;
     try {
       const response = await fetch('http://localhost:5201/api/Ranchos', {
-        headers: { 'Authorization': `Bearer ${token}` }
+        headers: { 'Authorization': `Bearer ${token}`, "Content-Type": "application/json"}
       });
       if (!response.ok) throw new Error('Error al obtener ranchos');
       const data = await response.json();

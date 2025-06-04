@@ -1,23 +1,65 @@
 // src/hooks/useToken.js
-import { useState, useEffect } from 'react';
+// Funciones para manejar token
+export const getToken = () => {
+  try {
+    return localStorage.getItem("token");
+  } catch (e) {
+    console.error("No se pudo leer el token:", e);
+    return null;
+  }
+};
 
-export default function useToken() {
-  const [token, setToken] = useState(() => {
-    return localStorage.getItem('token') || null;
-  });
-
-  useEffect(() => {
+export const setToken = (token) => {
+  try {
     if (token) {
-      localStorage.setItem('token', token);
+      localStorage.setItem("token", token);
+     
     } else {
-      localStorage.removeItem('token');
+      localStorage.removeItem("token");
     }
-  }, [token]);
+  } catch (e) {
+    console.error("No se pudo guardar el token:", e);
+  }
+};
 
-  const clearToken = () => {
-    localStorage.removeItem('token');
-    setToken(null);
-  };
+export const clearToken = () => {
+  try {
+    localStorage.removeItem("token");
+    console.log("Token eliminado de localStorage");
+  } catch (e) {
+    console.error("No se pudo eliminar el token:", e);
+  }
+};
 
-  return [token, setToken, clearToken];
-}
+// Funciones para manejar usuario
+export const setUser = (user) => {
+  try {
+    if (user) {
+      localStorage.setItem('user', JSON.stringify(user));
+      console.log("Usuario guardado en localStorage:", user);
+    } else {
+      localStorage.removeItem('user');
+    }
+  } catch (e) {
+    console.error("No se pudo guardar el usuario:", e);
+  }
+};
+
+export const getUser = () => {
+  try {
+    const user = localStorage.getItem('user');
+    return user ? JSON.parse(user) : null;
+  } catch (e) {
+    console.error("No se pudo leer el usuario:", e);
+    return null;
+  }
+};
+
+export const clearUser = () => {
+  try {
+    localStorage.removeItem('user');
+    console.log("Usuario eliminado de localStorage");
+  } catch (e) {
+    console.error("No se pudo eliminar el usuario:", e);
+  }
+};
