@@ -78,7 +78,7 @@ const GanadoPage = () => {
         Origen: formData.notas || null,
         FechaCompra: formData.fechaCompra,
         Id_Rancho: Number(formData.idRancho),
-        Id_Lote: formData.corral ? Number(formData.corral) : null
+        Id_Lote: formData.id_Lote ? Number(formData.id_Lote) : null
       };
 
       const response = await fetch(url, {
@@ -157,21 +157,21 @@ const GanadoPage = () => {
     setIsFormOpen(true);
   };
 
-  const openViewDialog = (animal) => {
-    setViewingAnimal({
-      id: animal.id_Animal,
-      arete: animal.arete,
-      raza: animal.raza,
-      sexo: animal.sexo,
-      edad: animal.categoria || 'N/A',
-      peso: animal.peso ? `${animal.peso} kg` : 'N/A',
-      lote: animal.id_Lote || 'N/A',
-      estado: animal.clasificacion,
-      fechaRegistro: animal.fechaCompra,
-      notas: animal.origen
-    });
-    setIsViewDialogOpen(true);
-  };
+ const openViewDialog = (animal) => {
+  setViewingAnimal({
+    id: animal.id_Animal,
+    arete: animal.arete,
+    raza: animal.raza,
+    sexo: animal.sexo,
+    edad: animal.categoria || 'N/A',
+    peso: animal.peso ? `${animal.peso} kg` : 'N/A',
+    lote: animal.id_Lote ? `Lote ${animal.id_Lote}` : 'Sin lote', // Mismo nombre que en mapToTableData
+    estado: animal.clasificacion,
+    fechaRegistro: animal.fechaCompra,
+    notas: animal.origen
+  });
+  setIsViewDialogOpen(true);
+};
 
   const filterGanado = (list) => {
     if (!searchTerm) return list;
@@ -186,13 +186,13 @@ const GanadoPage = () => {
   const hembras = filterGanado(ganado.filter(g => g.sexo === 'Hembra'));
 // mapear los datos al formato de la tabla
 const mapToTableData = (data) => data.map(animal => ({
-  id: animal.id_Animal, // ← Exactamente como viene en los datos (con mayúscula)
+  id: animal.id_Animal,
   arete: animal.arete,
   raza: animal.raza,
   sexo: animal.sexo,
   edad: animal.categoria || 'N/A',
   peso: animal.peso ? `${animal.peso} kg` : 'N/A',
-  corral: animal.id_lote || 'N/A', // ← Nota que es id_lote (minúscula)
+  lote: animal.id_Lote ? `Lote ${animal.id_Lote}` : 'Sin lote', // Nombre consistente y formato mejorado
   estado: animal.clasificacion,
   fechaRegistro: animal.fechaCompra,
   notas: animal.origen

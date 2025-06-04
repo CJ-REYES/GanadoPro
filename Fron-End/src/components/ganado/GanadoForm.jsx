@@ -15,7 +15,7 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
       sexo: 'Macho', 
       edad: '', 
       peso: '', 
-      corral: '', 
+      lote: '', 
       estado: 'Saludable', 
       fechaCompra: new Date().toISOString().split('T')[0], 
       notas: '' 
@@ -64,7 +64,7 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
         Origen: formData.notas || null,
         FechaCompra: formData.fechaCompra,
         Id_Rancho: Number(formData.idRancho),
-        Id_Lote: formData.corral ? Number(formData.corral) : null
+        Id_Lote: formData.id_Lote ? Number(formData.id_Lote) : null
       };
 
       const response = await fetch('http://localhost:5201/api/Animales', {
@@ -180,10 +180,10 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="corral">Corral/Lote</Label>
+          <Label htmlFor="lote">Lote</Label>
           <Input 
-            id="corral" 
-            name="corral" 
+            id="lote" 
+            name="lote" 
             type="number"
             value={formData.corral} 
             onChange={handleChange} 
