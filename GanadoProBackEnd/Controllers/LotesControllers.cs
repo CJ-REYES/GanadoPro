@@ -4,6 +4,8 @@ using GanadoProBackEnd.Data;
 using GanadoProBackEnd.Models;
 using GanadoProBackEnd.DTOs;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -15,38 +17,50 @@ namespace GanadoProBackEnd.Controllers
 
         public LotesController(MyDbContext context) => _context = context;
 
-[HttpGet]
+        [HttpGet]
+[Authorize]
+
 public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes()
 {
+    
+    // Get current user ID from token
+    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    if (string.IsNullOrEmpty(userId)) 
+        return Unauthorized();
+
+
     return await _context.Lotes
         .Include(l => l.Rancho)
             .ThenInclude(r => r.User)
-        .Include(l => l.Animales) // Incluir animales
+        .Include(l => l.Animales)
+        .Where(l => l.Rancho.Id_User == int.Parse(userId)) // ADD THIS FILTER
         .Select(l => new LoteResponseDto
-        {
-            Id_Lote = l.Id_Lote,
-            NombreRancho = l.Rancho.NombreRancho,
-            Comunidad = l.Rancho.Ubicacion,
-            Remo = l.Remo,
-            Estado = l.Estado,
-            UPP = l.Rancho.User.Upp,
-            TotalAnimales = l.Animales.Count,
-            FechaCreacion = l.Fecha_Creacion,
-            FechaEntrada = l.Fecha_Entrada,
-            Animales = l.Animales.Select(a => new AnimalEnLoteDto
-            {
-                Id = a.Id_Animal,
-                Arete = a.Arete.ToString(),
-                Sexo = a.Sexo,
-                Edad_Meses = a.Edad_Meses, // Asegúrate de tener esta propiedad o calcularla
-                Peso = a.Peso
-            }).ToList()
-        })
-        .ToListAsync();
+                                {
+                                    Id_Lote = l.Id_Lote,
+                                    NombreRancho = l.Rancho.NombreRancho,
+                                    Comunidad = l.Rancho.Ubicacion,
+                                    Remo = l.Remo,
+                                    Estado = l.Estado,
+                                    UPP = l.Rancho.User.Upp,
+                                    TotalAnimales = l.Animales.Count,
+                                    FechaCreacion = l.Fecha_Creacion,
+                                    FechaEntrada = l.Fecha_Entrada,
+                                    Animales = l.Animales.Select(a => new AnimalEnLoteDto
+                                    {
+                                        Id = a.Id_Animal,
+                                        Arete = a.Arete.ToString(),
+                                        Sexo = a.Sexo,
+                                        Edad_Meses = a.Edad_Meses, // Asegúrate de tener esta propiedad o calcularla
+                                        Peso = a.Peso
+                                    }).ToList()
+                                })
+                                .ToListAsync();
 }
 
         // GET: Lotes disponibles para venta
         [HttpGet("disponibles")]
+        [Authorize]
+
         public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotesDisponibles()
         {
             return await _context.Lotes
@@ -63,7 +77,9 @@ public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes()
         }
 
         // POST: Crear lote
-[HttpPost]
+        [HttpPost]
+[Authorize]
+
 public async Task<ActionResult<LoteResponseDto>> CreateLote([FromBody] CreateLoteDto loteDto)
 {
     // Incluir el User al buscar el Rancho
@@ -102,6 +118,8 @@ public async Task<ActionResult<LoteResponseDto>> CreateLote([FromBody] CreateLot
 
         // GET: api/Lotes/{id}
         [HttpGet("{id}")]
+        [Authorize]
+
         public async Task<ActionResult<LoteResponseDto>> GetLote(int id)
         {
             var lote = await _context.Lotes
@@ -128,12 +146,14 @@ public async Task<ActionResult<LoteResponseDto>> CreateLote([FromBody] CreateLot
 
         // PUT: Actualizar lote
         [HttpPut("{id}")]
+        [Authorize]
+
         public async Task<IActionResult> UpdateLote(int id, [FromBody] UpdateLoteDto updateDto)
         {
             var lote = await _context.Lotes.FindAsync(id);
             if (lote == null) return NotFound();
 
-           
+
             lote.Estado = updateDto.Estado ?? lote.Estado;
 
             _context.Entry(lote).State = EntityState.Modified;
@@ -144,6 +164,8 @@ public async Task<ActionResult<LoteResponseDto>> CreateLote([FromBody] CreateLot
 
         // DELETE: Eliminar lote
         [HttpDelete("{id}")]
+        [Authorize]
+
         public async Task<IActionResult> DeleteLote(int id)
         {
             var lote = await _context.Lotes

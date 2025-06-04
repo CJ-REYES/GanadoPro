@@ -4,6 +4,7 @@ using GanadoProBackEnd.Data;
 using GanadoProBackEnd.Models;
 using GanadoProBackEnd.DTOs;
 using System.ComponentModel.DataAnnotations;
+using Microsoft.AspNetCore.Authorization;
 namespace GanadoProBackEnd.Controllers
 {
     [ApiController]
@@ -16,6 +17,8 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: Todos los animales
         [HttpGet]
+        [Authorize]
+
         public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimales()
         {
             return await _context.Animales
@@ -40,6 +43,8 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: Animal por ID
         [HttpGet("{id}")]
+        [Authorize]
+
         public async Task<ActionResult<AnimalResponseDto>> GetAnimal(int id)
         {
             var animal = await _context.Animales
@@ -67,6 +72,8 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: Animales comprados
         [HttpGet("comprados")]
+        [Authorize]
+
         public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesComprados()
         {
             return await _context.Animales
@@ -90,42 +97,46 @@ namespace GanadoProBackEnd.Controllers
                 .ToListAsync();
         }
 
-    [HttpPost]
+        [HttpPost]
+    [Authorize]
+
 public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] CreateAnimalDto animalDto)
-{
-    // Validar rancho
-    var rancho = await _context.Ranchos.FindAsync(animalDto.Id_Rancho);
-    if (rancho == null) return BadRequest("Rancho no existe");
+        {
+            // Validar rancho
+            var rancho = await _context.Ranchos.FindAsync(animalDto.Id_Rancho);
+            if (rancho == null) return BadRequest("Rancho no existe");
 
-    // Validar lote si se proporciona
-    if (animalDto.Id_Lote.HasValue)
-    {
-        var lote = await _context.Lotes.FindAsync(animalDto.Id_Lote.Value);
-        if (lote == null) return BadRequest("Lote no existe");
-    }
+            // Validar lote si se proporciona
+            if (animalDto.Id_Lote.HasValue)
+            {
+                var lote = await _context.Lotes.FindAsync(animalDto.Id_Lote.Value);
+                if (lote == null) return BadRequest("Lote no existe");
+            }
 
-    var animal = new Animal
-    {
-        Id_Rancho = animalDto.Id_Rancho,
-        Arete = animalDto.Arete,
-        Peso = animalDto.Peso,
-        Sexo = animalDto.Sexo,
-        Clasificacion = animalDto.Clasificacion,
-        Categoria = animalDto.Categoria,
-        Raza = animalDto.Raza,
-        Id_Lote = animalDto.Id_Lote, // Acepta null
-        Origen = animalDto.Origen,
-        FechaCompra = animalDto.FechaCompra,
-        Fecha_Registro = DateTime.Now
-    };
+            var animal = new Animal
+            {
+                Id_Rancho = animalDto.Id_Rancho,
+                Arete = animalDto.Arete,
+                Peso = animalDto.Peso,
+                Sexo = animalDto.Sexo,
+                Clasificacion = animalDto.Clasificacion,
+                Categoria = animalDto.Categoria,
+                Raza = animalDto.Raza,
+                Id_Lote = animalDto.Id_Lote, // Acepta null
+                Origen = animalDto.Origen,
+                FechaCompra = animalDto.FechaCompra,
+                Fecha_Registro = DateTime.Now
+            };
 
-    await _context.Animales.AddAsync(animal);
-    await _context.SaveChangesAsync();
+            await _context.Animales.AddAsync(animal);
+            await _context.SaveChangesAsync();
 
-    return CreatedAtAction(nameof(GetAnimal), new { id = animal.Id_Animal }, AnimalToResponseDto(animal));
-}
+            return CreatedAtAction(nameof(GetAnimal), new { id = animal.Id_Animal }, AnimalToResponseDto(animal));
+        }
 
         [HttpPut("{id}")]
+        [Authorize]
+
         public async Task<IActionResult> UpdateAnimal(int id, [FromBody] UpdateAnimalDto updateDto)
         {
             var animal = await _context.Animales.FindAsync(id);
@@ -152,6 +163,8 @@ public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] Creat
         }
 
         [HttpPut("asignar-lote")]
+        [Authorize]
+
         public async Task<IActionResult> AsignarLoteAMultiplesAnimales([FromBody] AsignarLoteDto request)
         {
             var lote = await _context.Lotes.FindAsync(request.Id_Lote);
@@ -179,6 +192,8 @@ public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] Creat
 
         // DELETE: Eliminar animal
         [HttpDelete("{id}")]
+        [Authorize]
+
         public async Task<IActionResult> DeleteAnimal(int id)
         {
             var animal = await _context.Animales.FindAsync(id);

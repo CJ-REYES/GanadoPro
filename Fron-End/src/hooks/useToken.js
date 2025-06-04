@@ -2,27 +2,22 @@
 import { useState, useEffect } from 'react';
 
 export default function useToken() {
-  const [token, setTokenState] = useState(() => {
+  const [token, setToken] = useState(() => {
     return localStorage.getItem('token') || null;
   });
 
   useEffect(() => {
-    const handleStorageChange = () => {
-      setTokenState(localStorage.getItem('token') || null);
-    };
-
-    window.addEventListener('storage', handleStorageChange);
-    return () => window.removeEventListener('storage', handleStorageChange);
-  }, []);
-
-  const setToken = (newToken) => {
-    if (newToken) {
-      localStorage.setItem('token', newToken);
+    if (token) {
+      localStorage.setItem('token', token);
     } else {
       localStorage.removeItem('token');
     }
-    setTokenState(newToken);
+  }, [token]);
+
+  const clearToken = () => {
+    localStorage.removeItem('token');
+    setToken(null);
   };
 
-  return [token, setToken];
+  return [token, setToken, clearToken];
 }

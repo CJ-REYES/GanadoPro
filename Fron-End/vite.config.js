@@ -185,6 +185,7 @@ export default defineConfig({
 	customLogger: logger,
 	plugins: [react(), addTransformIndexHtml],
 	server: {
+		proxy: "http://localhost:5201/",
 		cors: true,
 		headers: {
 			'Cross-Origin-Embedder-Policy': 'credentialless',

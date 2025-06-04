@@ -9,11 +9,13 @@ using System.Text;
 using GanadoProBackEnd.Data;
 using GanadoProBackEnd.Models;
 using GanadoProBackEnd.DTOs;
+using Microsoft.AspNetCore.Cors;
 
 namespace GanadoProBackEnd.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [EnableCors("AllowAll")]
     public class UsersController : ControllerBase
     {
         private readonly MyDbContext _context;
@@ -27,6 +29,7 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: api/Users
         [HttpGet]
+        [Authorize]
         public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetUsers()
         {
             return await _context.Users
@@ -44,6 +47,7 @@ namespace GanadoProBackEnd.Controllers
 
         // POST: api/Users
         [HttpPost]
+        [Authorize]
         public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUserDto userDto)
         {
             if (!ModelState.IsValid)
@@ -80,6 +84,7 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: api/Users/5
         [HttpGet("{id}")]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<UserResponseDto>> GetUser(int id)
@@ -102,6 +107,7 @@ namespace GanadoProBackEnd.Controllers
 
         // PUT: api/Users/5
         [HttpPut("{id}")]
+        [Authorize]
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -143,18 +149,19 @@ namespace GanadoProBackEnd.Controllers
 
         // POST: api/Users/login
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<ActionResult<LoginResponseDto>> Login([FromBody] LoginDto loginDto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
             var user = await _context.Users.FirstOrDefaultAsync(u => u.Email == loginDto.Email);
-            
+
             if (user == null || !BCrypt.Net.BCrypt.Verify(loginDto.Password, user.Password))
                 return Unauthorized(new { message = "Credenciales inválidas" });
 
             var token = GenerateJwtToken(user);
-            
+
             return Ok(new LoginResponseDto
             {
                 Token = token,
@@ -174,9 +181,9 @@ namespace GanadoProBackEnd.Controllers
         {
             try
             {
-                var key = _configuration["Jwt:Key"] 
+                var key = _configuration["Jwt:Key"]
                     ?? throw new ArgumentNullException("Jwt:Key no configurada");
-                
+
                 var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
                 var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
@@ -239,7 +246,7 @@ namespace GanadoProBackEnd.Controllers
             [Required(ErrorMessage = "El email es obligatorio")]
             [EmailAddress(ErrorMessage = "Formato inválido")]
             public required string Email { get; set; }
-            
+
             [Required(ErrorMessage = "El teléfono es obligatorio")]
             [StringLength(15, ErrorMessage = "Máximo 15 caracteres")]
             public required string Telefono { get; set; }

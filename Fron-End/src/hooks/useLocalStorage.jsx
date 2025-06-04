@@ -1,53 +1,34 @@
+import { useState, useEffect } from 'react';
 
-    import React from 'react';
-    import { useState, useEffect } from 'react';
-
-    function useLocalStorage(key, initialValue) {
-      const [storedValue, setStoredValue] = useState(() => {
-        if (typeof window === "undefined") {
-          return initialValue;
-        }
+export default function useLocalStorage(key, initialValue) {
+    const [storedValue, setStoredValue] = useState(() => {
         try {
-          const item = window.localStorage.getItem(key);
-          return item ? JSON.parse(item) : initialValue;
+            const item = window.localStorage.getItem(key);
+            return item ? JSON.parse(item) : initialValue;
         } catch (error) {
-          console.error("Error reading localStorage key “" + key + "”:", error);
-          return initialValue;
+            return initialValue;
         }
-      });
+    });
 
-      const setValue = (value) => {
+    useEffect(() => {
         try {
-          const valueToStore =
-            value instanceof Function ? value(storedValue) : value;
-          setStoredValue(valueToStore);
-          if (typeof window !== "undefined") {
+            const valueToStore = typeof storedValue === "function" 
+                ? storedValue(storedValue) 
+                : storedValue;
             window.localStorage.setItem(key, JSON.stringify(valueToStore));
-          }
         } catch (error) {
-          console.error("Error setting localStorage key “" + key + "”:", error);
+            console.error(`Error setting localStorage key "${key}":`, error);
         }
-      };
+    }, [key, storedValue]);
 
-      useEffect(() => {
-        const handleStorageChange = (event) => {
-          if (event.key === key) {
-            try {
-              setStoredValue(event.newValue ? JSON.parse(event.newValue) : initialValue);
-            } catch (error) {
-              console.error("Error parsing localStorage change for key “" + key + "”:", error);
-              setStoredValue(initialValue);
-            }
-          }
-        };
+    const clearStorage = () => {
+        try {
+            window.localStorage.removeItem(key);
+            setStoredValue(initialValue);
+        } catch (error) {
+            console.error(`Error clearing localStorage key "${key}":`, error);
+        }
+    };
 
-        window.addEventListener('storage', handleStorageChange);
-        return () => window.removeEventListener('storage', handleStorageChange);
-      }, [key, initialValue]);
-
-
-      return [storedValue, setValue];
-    }
-
-    export default useLocalStorage;
-  
+    return [storedValue, setStoredValue, clearStorage];
+}

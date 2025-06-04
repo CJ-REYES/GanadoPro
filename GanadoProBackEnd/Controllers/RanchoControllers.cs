@@ -4,6 +4,8 @@ using GanadoProBackEnd.Data;
 using GanadoProBackEnd.Models;
 using GanadoProBackEnd.DTOs;
 using System.ComponentModel.DataAnnotations;
+using System.Security.Claims;
+using Microsoft.AspNetCore.Authorization;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -17,27 +19,38 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: Todos los ranchos
 [HttpGet]
+[Authorize]
+
 public async Task<ActionResult<IEnumerable<RanchoResponseDto>>> GetRanchos()
 {
+
+    // Get current user ID from token
+    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+    if (string.IsNullOrEmpty(userId)) 
+        return Unauthorized();
+        
     return await _context.Ranchos
-        .Include(r => r.User) // ¡Agregar esta línea!
+        .Where(r => r.Id_User == int.Parse(userId)) // ADD THIS FILTER
+        .Include(r => r.User)
         .Include(r => r.Lotes)
         .Select(r => new RanchoResponseDto
-        {
-            Id_Rancho = r.Id_Rancho,
-            Id_User = r.Id_User, // Mapear directamente desde el rancho
-            NombreRancho = r.NombreRancho,
-            Ubicacion = r.Ubicacion,
-            Propietario = r.User.Name,
-            Telefono = r.User.Telefono,
-            Email = r.User.Email, // Ahora sí tendrá valor
-            TotalLotes = r.Lotes.Count
-        })
-        .ToListAsync();
+                {
+                    Id_Rancho = r.Id_Rancho,
+                    Id_User = r.Id_User, // Mapear directamente desde el rancho
+                    NombreRancho = r.NombreRancho,
+                    Ubicacion = r.Ubicacion,
+                    Propietario = r.User.Name,
+                    Telefono = r.User.Telefono,
+                    Email = r.User.Email, // Ahora sí tendrá valor
+                    TotalLotes = r.Lotes.Count
+                })
+                .ToListAsync();
 }
 
         // GET: Rancho por ID
-[HttpGet("{id}")]
+        [HttpGet("{id}")]
+[Authorize]
+
 public async Task<ActionResult<RanchoResponseDto>> GetRancho(int id)
 {
     var rancho = await _context.Ranchos
@@ -61,7 +74,9 @@ public async Task<ActionResult<RanchoResponseDto>> GetRancho(int id)
 }
 
         // POST: Crear rancho
-[HttpPost]
+        [HttpPost]
+[Authorize]
+
 public async Task<ActionResult<RanchoResponseDto>> CreateRancho([FromBody] CreateRanchoDto ranchoDto)
 {
     var user = await _context.Users.FindAsync(ranchoDto.Id_User);
@@ -93,6 +108,8 @@ public async Task<ActionResult<RanchoResponseDto>> CreateRancho([FromBody] Creat
 
         // PUT: Actualizar rancho
         [HttpPut("{id}")]
+        [Authorize]
+
         public async Task<IActionResult> UpdateRancho(int id, [FromBody] UpdateRanchoDto updateDto)
         {
             var rancho = await _context.Ranchos.FindAsync(id);
@@ -100,7 +117,7 @@ public async Task<ActionResult<RanchoResponseDto>> CreateRancho([FromBody] Creat
 
             rancho.NombreRancho = updateDto.NombreRancho ?? rancho.NombreRancho;
             rancho.Ubicacion = updateDto.Ubicacion ?? rancho.Ubicacion;
-            
+
 
             _context.Entry(rancho).State = EntityState.Modified;
             await _context.SaveChangesAsync();
@@ -110,6 +127,8 @@ public async Task<ActionResult<RanchoResponseDto>> CreateRancho([FromBody] Creat
 
         // DELETE: Eliminar rancho
         [HttpDelete("{id}")]
+        [Authorize]
+
         public async Task<IActionResult> DeleteRancho(int id)
         {
             var rancho = await _context.Ranchos
