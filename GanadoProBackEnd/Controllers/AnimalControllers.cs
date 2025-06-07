@@ -21,24 +21,23 @@ namespace GanadoProBackEnd.Controllers
 
         public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimales()
         {
-            return await _context.Animales
+            var animales = await _context.Animales
                 .Include(a => a.Lote)
-                .Select(a => new AnimalResponseDto
-                {
-                    Id_Animal = a.Id_Animal,
-                    Arete = a.Arete,
-                    Peso = a.Peso,
-                    Sexo = a.Sexo,
-                    Clasificacion = a.Clasificacion,
-                    Categoria = a.Categoria,
-                    Raza = a.Raza,
-                    Id_Lote = a.Id_Lote,
-
-                    FechaRegistro = a.Fecha_Registro,
-                    Origen = a.Origen,
-                    FechaCompra = a.FechaCompra
-                })
                 .ToListAsync();
+
+            return animales.Select(a => new AnimalResponseDto
+            {
+                Id_Animal = a.Id_Animal,
+                Arete = a.Arete,
+                Peso = a.Peso,
+                Sexo = a.Sexo,
+                Clasificacion = a.Clasificacion,
+                Raza = a.Raza,
+                Id_Lote = a.Id_Lote,
+                FechaIngreso = a.FechaIngreso != null ? a.FechaIngreso.Value.ToString("yyyy-MM-dd") : null,
+                UppOrigen = a.UppOrigen,
+                FechaSalida = a.FechaSalida != null ? a.FechaSalida.Value.ToString("yyyy-MM-dd") : null
+            }).ToList();
         }
 
         // GET: Animal por ID
@@ -60,13 +59,12 @@ namespace GanadoProBackEnd.Controllers
                 Peso = animal.Peso,
                 Sexo = animal.Sexo,
                 Clasificacion = animal.Clasificacion,
-                Categoria = animal.Categoria,
                 Raza = animal.Raza,
                 Id_Lote = animal.Id_Lote,
 
-                FechaRegistro = animal.Fecha_Registro,
-                Origen = animal.Origen,
-                FechaCompra = animal.FechaCompra
+                FechaIngreso = (animal.FechaIngreso ?? DateTime.Now).ToString("yyyy-MM-dd"),
+                UppOrigen = animal.UppOrigen,
+                FechaSalida = (animal.FechaSalida ?? DateTime.Now).ToString("yyyy-MM-dd")
             };
         }
 
@@ -76,25 +74,25 @@ namespace GanadoProBackEnd.Controllers
 
         public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesComprados()
         {
-            return await _context.Animales
-                .Where(a => a.Origen == "Comprado")
+            var animales = await _context.Animales
+                .Where(a => !string.IsNullOrEmpty(a.UppOrigen))
                 .Include(a => a.Lote)
-                .Select(a => new AnimalResponseDto
-                {
-                    Id_Animal = a.Id_Animal,
-                    Arete = a.Arete,
-                    Peso = a.Peso,
-                    Sexo = a.Sexo,
-                    Clasificacion = a.Clasificacion,
-                    Categoria = a.Categoria,
-                    Raza = a.Raza,
-                    Id_Lote = a.Id_Lote,
-
-                    FechaRegistro = a.Fecha_Registro,
-                    Origen = a.Origen,
-                    FechaCompra = a.FechaCompra
-                })
                 .ToListAsync();
+
+            return animales.Select(a => new AnimalResponseDto
+            {
+                Id_Animal = a.Id_Animal,
+                Arete = a.Arete,
+                Peso = a.Peso,
+                Sexo = a.Sexo,
+                Clasificacion = a.Clasificacion,
+                Raza = a.Raza,
+                Id_Lote = a.Id_Lote,
+
+                FechaIngreso = a.FechaIngreso?.ToString("yyyy-MM-dd"),
+                UppOrigen = a.UppOrigen,
+                FechaSalida = a.FechaSalida?.ToString("yyyy-MM-dd")
+            }).ToList();
         }
 
         [HttpPost]
@@ -117,15 +115,15 @@ public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] Creat
             {
                 Id_Rancho = animalDto.Id_Rancho,
                 Arete = animalDto.Arete,
-                Peso = animalDto.Peso,
+                Peso = animalDto.Peso ?? 0,
                 Sexo = animalDto.Sexo,
                 Clasificacion = animalDto.Clasificacion,
-                Categoria = animalDto.Categoria,
+              
                 Raza = animalDto.Raza,
                 Id_Lote = animalDto.Id_Lote, // Acepta null
-                Origen = animalDto.Origen,
-                FechaCompra = animalDto.FechaCompra,
-                Fecha_Registro = DateTime.Now
+                UppOrigen = animalDto.UppOrigen,
+                FechaSalida = animalDto.FechaSalida,
+                FechaIngreso = DateTime.Now
             };
 
             await _context.Animales.AddAsync(animal);
@@ -152,7 +150,7 @@ public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] Creat
             animal.Peso = updateDto.Peso ?? animal.Peso;
             animal.Sexo = updateDto.Sexo ?? animal.Sexo;
             animal.Clasificacion = updateDto.Clasificacion ?? animal.Clasificacion;
-            animal.Categoria = updateDto.Categoria ?? animal.Categoria;
+    
             animal.Raza = updateDto.Raza ?? animal.Raza;
             animal.Id_Lote = updateDto.Id_Lote ?? animal.Id_Lote; // Actualizar lote
 
@@ -215,13 +213,12 @@ public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] Creat
                 Peso = animal.Peso,
                 Sexo = animal.Sexo,
                 Clasificacion = animal.Clasificacion,
-                Categoria = animal.Categoria,
                 Raza = animal.Raza,
                 Id_Lote = animal.Id_Lote,
 
-                FechaRegistro = animal.Fecha_Registro,
-                Origen = animal.Origen,
-                FechaCompra = animal.FechaCompra
+                FechaIngreso = animal.FechaIngreso?.ToString("yyyy-MM-dd"),
+                UppOrigen = animal.UppOrigen,
+                FechaSalida = animal.FechaSalida?.ToString("yyyy-MM-dd")
             };
         }
        
@@ -230,42 +227,96 @@ public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] Creat
     // DTOs
     public class CreateAnimalDto
     {
-        public int Id_Rancho { get; set; }
-        public int Arete { get; set; }
-        public int Peso { get; set; }
+        public string Arete { get; set; }
+        public int? Peso { get; set; }
         public string Sexo { get; set; }
-        public string Clasificacion { get; set; }
-        public string Categoria { get; set; }
         public string Raza { get; set; }
-        public int? Id_Lote { get; set; } // Cambiado a nullable
-        public string Origen { get; set; }
-        public DateTime? FechaCompra { get; set; }
+        public string? Clasificacion { get; set; }
+        public int Edad_Meses { get; set; }
+        public string? FoliGuiaRemoEntrada { get; set; }
+        public string? FoliGuiaRemoSalida { get; set; }
+        public string? UppOrigen { get; set; }
+        public string? UppDestino { get; set; }
+        public DateTime? FechaIngreso { get; set; }
+        public DateTime? FechaSalida { get; set; }
+        public string? MotivoSalida { get; set; }
+        public string? Observaciones { get; set; }
+        public string? CertificadoZootanitario { get; set; }
+        public string? ContanciaGarrapaticida { get; set; }
+        public string? FolioTB { get; set; }
+        public string? ValidacionConside_ID { get; set; }
+        public string? FierroCliente { get; set; }
+
+        public string? RazonSocial { get; set; }
+        public string Estado { get; set; } = "EnStock"; // Valores: EnStock, Vendido, Baja, 
+ 
+    public int? Id_Lote { get; set; }
+    public int? Id_Rancho { get; set; }
+    public int? Id_Productor { get; set; }
+    public int? Id_Cliente { get; set; }
     }
 
     public class UpdateAnimalDto
     {
-        public int Id_Rancho { get; set; }
+        public string Arete { get; set; }
         public int? Peso { get; set; }
-        public string? Sexo { get; set; }
+        public string Sexo { get; set; }
+        public string Raza { get; set; }
         public string? Clasificacion { get; set; }
-        public string? Categoria { get; set; }
-        public string? Raza { get; set; }
-        public int? Id_Lote { get; set; } // Añadido para actualizar lote
+        public int Edad_Meses { get; set; }
+        public string? FoliGuiaRemoEntrada { get; set; }
+        public string? FoliGuiaRemoSalida { get; set; }
+        public string? UppOrigen { get; set; }
+        public string? UppDestino { get; set; }
+        public string? FechaIngreso { get; set; }
+        public string? FechaSalida { get; set; }
+        public string? MotivoSalida { get; set; }
+        public string? Observaciones { get; set; }
+        public string? CertificadoZootanitario { get; set; }
+        public string? ContanciaGarrapaticida { get; set; }
+        public string? FolioTB { get; set; }
+        public string? ValidacionConside_ID { get; set; }
+        public string? FierroCliente { get; set; }
+
+        public string? RazonSocial { get; set; }
+        public string Estado { get; set; } = "EnStock"; // Valores: EnStock, Vendido, Baja, 
+ 
+    public int? Id_Lote { get; set; }
+    public int? Id_Rancho { get; set; }
+    public int? Id_Productor { get; set; }
+    public int? Id_Cliente { get; set; } // Añadido para actualizar lote
     }
 
     public class AnimalResponseDto
     {
         public int Id_Animal { get; set; }
-        public int Arete { get; set; }
+        public string Arete { get; set; }
         public int Peso { get; set; }
         public string Sexo { get; set; }
-        public string Clasificacion { get; set; }
-        public string Categoria { get; set; }
         public string Raza { get; set; }
+        public string? Clasificacion { get; set; }
+        public int Edad_Meses { get; set; }
+        public string? FoliGuiaRemoEntrada { get; set; }
+        public string? FoliGuiaRemoSalida { get; set; }
+        public string? UppOrigen { get; set; }
+        public string? UppDestino { get; set; }
+        public string? FechaIngreso { get; set; }
+        public string? FechaSalida { get; set; }
+        public string? MotivoSalida { get; set; }
+        public string? Observaciones { get; set; }
+        public string? CertificadoZootanitario { get; set; }
+        public string? ContanciaGarrapaticida { get; set; }
+        public string? FolioTB { get; set; }
+        public string? ValidacionConside_ID { get; set; }
+        public string? FierroCliente { get; set; }
+
+        public string? RazonSocial { get; set; }
+        public string Estado { get; set; } = "EnStock"; // Valores: EnStock, Vendido, Baja, 
+
         public int? Id_Lote { get; set; }
-        public DateTime FechaRegistro { get; set; }
-        public string Origen { get; set; }
-        public DateTime? FechaCompra { get; set; }
+        public int? Id_Rancho { get; set; }
+        public int? Id_Productor { get; set; }
+        public int? Id_Cliente { get; set; }
     }
    
 }

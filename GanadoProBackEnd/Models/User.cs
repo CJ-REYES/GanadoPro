@@ -15,13 +15,9 @@ namespace GanadoProBackEnd.Models
         [DataType(DataType.Password)]
         public string Password { get; set; }
         public string Upp { get; set; } 
-        public UserRole Rol { get; set; } 
+        
         public ICollection<Rancho> Ranchos { get; set; }
     }
-    public enum UserRole
-{
-    Admin,
-    Business,
-    User
-}
+  
+
 }

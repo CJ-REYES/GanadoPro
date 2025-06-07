@@ -40,23 +40,20 @@ namespace GanadoProBackEnd.Controllers
                     Email = u.Email,
                     Upp = u.Upp,
                     Telefono = u.Telefono,
-                    Rol = u.Rol.ToString()
+                 
                 })
                 .ToListAsync();
         }
 
         // POST: api/Users
         [HttpPost]
-        [Authorize]
+        [AllowAnonymous]
         public async Task<ActionResult<UserResponseDto>> CreateUser([FromBody] CreateUserDto userDto)
         {
             if (!ModelState.IsValid)
                 return BadRequest(ModelState);
 
-            if (!Enum.TryParse<UserRole>(userDto.Rol, true, out UserRole rol))
-            {
-                return BadRequest(new { message = "Rol inválido. Valores permitidos: Admin, Business, User" });
-            }
+
 
             var user = new User
             {
@@ -65,7 +62,7 @@ namespace GanadoProBackEnd.Controllers
                 Password = BCrypt.Net.BCrypt.HashPassword(userDto.Password),
                 Upp = userDto.Upp ?? string.Empty,
                 Telefono = userDto.Telefono,
-                Rol = rol
+              
             };
 
             await _context.Users.AddAsync(user);
@@ -78,7 +75,7 @@ namespace GanadoProBackEnd.Controllers
                 Email = user.Email,
                 Upp = user.Upp,
                 Telefono = user.Telefono,
-                Rol = user.Rol.ToString()
+           
             });
         }
 
@@ -101,7 +98,7 @@ namespace GanadoProBackEnd.Controllers
                 Email = user.Email,
                 Upp = user.Upp,
                 Telefono = user.Telefono,
-                Rol = user.Rol.ToString()
+            
             };
         }
 
@@ -172,7 +169,7 @@ namespace GanadoProBackEnd.Controllers
                     Email = user.Email,
                     Upp = user.Upp,
                     Telefono = user.Telefono,
-                    Rol = user.Rol.ToString()
+                  
                 }
             });
         }
@@ -191,7 +188,7 @@ namespace GanadoProBackEnd.Controllers
                 {
                     new Claim(JwtRegisteredClaimNames.Sub, user.Email),
                     new Claim("id", user.Id_User.ToString()),
-                    new Claim(ClaimTypes.Role, user.Rol.ToString())
+                  
                 };
 
                 var token = new JwtSecurityToken(

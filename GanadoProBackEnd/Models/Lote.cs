@@ -9,7 +9,7 @@ namespace GanadoProBackEnd.Models
         public int Id_Lote { get; set; }
 
         [Required(ErrorMessage = "El ID del rancho es obligatorio")]
-        public int Id_Rancho { get; set; }
+        public int Id_Rancho { get; set; } // Ubicación del lote
 
         [Required(ErrorMessage = "El Remo es obligatorio")]
         public int Remo { get; set; }
@@ -19,10 +19,11 @@ namespace GanadoProBackEnd.Models
         public DateTime? Fecha_Salida { get; set; } // Permitir nulos
         public string Estado { get; set; } = "Disponible";
         public string? Observaciones { get; set; }
-
+        public int? Id_Cliente { get; set; }
         // Relaciones
         public Rancho Rancho { get; set; }
         public ICollection<Animal> Animales { get; set; }
-        public List<Venta> Ventas { get; set; }
+        public Clientes Cliente { get; set; }  // Nueva relación
+     public ICollection<Venta> Ventas { get; set; } = new List<Venta>();
     }
 }

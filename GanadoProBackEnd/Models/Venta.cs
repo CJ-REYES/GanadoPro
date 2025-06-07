@@ -1,13 +1,27 @@
+using System.Collections.Generic;
+
 namespace GanadoProBackEnd.Models
 {
+    public enum TipoVenta
+    {
+        Nacional,
+        Internacional
+    }
+
     public class Venta
     {
         public int Id_Venta { get; set; }
         public int Id_Rancho { get; set; }
-        public DateTime FechaVenta { get; set; }
-        public string Cliente { get; set; }
-        public string Estado { get; set; }
-        public List<Lote> Lotes { get; set; }
-        public Rancho Rancho { get; set; }
+        public int Id_Cliente { get; set; } 
+        public int Id_Productor { get; set; }
+        public DateTime FechaSalida { get; set; }
+        public string? FolioGuiaRemo { get; set; }
+        public string? Estado { get; set; } // "Programada", "Completada", "Cancelada"
+        public TipoVenta TipoVenta { get; set; }
+
+        public List<Lote> LotesVendidos { get; set; } = new List<Lote>();
+        public Rancho? RanchoOrigen { get; set; }
+        public Clientes? Cliente { get; set; }
+        public Productores? Productor { get; set; }
     }
 }
