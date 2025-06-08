@@ -14,9 +14,14 @@ namespace GanadoProBackEnd.Models
         [Required(ErrorMessage = "La contraseña es obligatoria")]
         [DataType(DataType.Password)]
         public string Password { get; set; }
-        public string Upp { get; set; } 
-        
+        public string Upp { get; set; }
+
         public ICollection<Rancho> Ranchos { get; set; }
+        public ICollection<Lote> Lotes { get; set; }
+        public ICollection<Clientes> Clientes { get; set; }
+        public ICollection<Productores> Productores { get; set; }
+        public ICollection<Venta> Ventas { get; set; } = new List<Venta>();
+        public ICollection<Animal> Animals { get; set; }
     }
   
 

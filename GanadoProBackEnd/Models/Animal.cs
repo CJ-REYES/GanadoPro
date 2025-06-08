@@ -9,7 +9,7 @@ namespace GanadoProBackEnd.Models
     public class Animal
     {
         public int Id_Animal { get; set; }
-
+        public int Id_User { get; set; }
         public string Arete { get; set; }
         public int Peso { get; set; }
         public string Sexo { get; set; }
@@ -40,6 +40,7 @@ namespace GanadoProBackEnd.Models
 
     // Propiedades de navegación
     public Lote Lote { get; set; }
+    public User User { get; set; }
     public Rancho Rancho { get; set; }
     public Productores Productores { get; set; }
     public Clientes Clientes { get; set; }

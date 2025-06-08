@@ -15,7 +15,6 @@ namespace GanadoProBackEnd.Data
         public DbSet<Animal> Animales { get; set; }
         public DbSet<Clientes> Clientes { get; set; }
         public DbSet<Fierros> Fierros { get; set; }
-        public DbSet<InvetarioExportacion> InventarioExportaciones { get; set; }
         public DbSet<Lote> Lotes { get; set; }
         public DbSet<Productores> Productores { get; set; }
         public DbSet<Rancho> Ranchos { get; set; }
@@ -54,6 +53,12 @@ namespace GanadoProBackEnd.Data
                     .WithMany(c => c.Animales)
                     .HasForeignKey(a => a.Id_Cliente)
                     .OnDelete(DeleteBehavior.SetNull);
+                    
+                // Relación con User (FALTANTE)
+                entity.HasOne(a => a.User)
+                    .WithMany(u => u.Animals)
+                    .HasForeignKey(a => a.Id_User)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Configuración de Clientes
@@ -61,7 +66,12 @@ namespace GanadoProBackEnd.Data
             {
                 entity.HasKey(e => e.Id_Cliente);
                 
-                // Relaciones
+                // Relación con User (FALTANTE)
+                entity.HasOne(c => c.User)
+                    .WithMany(u => u.Clientes)
+                    .HasForeignKey(c => c.Id_User)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
                 entity.HasMany(c => c.Animales)
                     .WithOne(a => a.Clientes)
                     .HasForeignKey(a => a.Id_Cliente);
@@ -81,20 +91,8 @@ namespace GanadoProBackEnd.Data
                 entity.HasKey(e => e.Id_Fierro);
             });
 
-            // Configuración de InventarioExportación
-            modelBuilder.Entity<InvetarioExportacion>(entity =>
-            {
-                entity.HasKey(e => e.Id_InventarioExportacion);
-                
-                // Relaciones
-                entity.HasOne(ie => ie.Lote)
-                    .WithMany()
-                    .HasForeignKey(ie => ie.Id_Lote);
-                
-                entity.HasOne(ie => ie.Productor)
-                    .WithMany(p => p.Exportaciones)
-                    .HasForeignKey(ie => ie.Id_Productor);
-            });
+          
+
 
             // Configuración de Lote
             modelBuilder.Entity<Lote>(entity =>
@@ -105,9 +103,14 @@ namespace GanadoProBackEnd.Data
                     .HasDefaultValue("Disponible");
                 
                 entity.Property(e => e.Fecha_Creacion)
-                    .HasDefaultValue(DateTime.UtcNow);
+                    .HasDefaultValue(DateTime.UtcNow); // Usar UTC
                 
-                // Relaciones
+                // Relación con User (FALTANTE)
+                entity.HasOne(l => l.User)
+                    .WithMany(u => u.Lotes)
+                    .HasForeignKey(l => l.Id_User)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
                 entity.HasOne(l => l.Rancho)
                     .WithMany(r => r.Lotes)
                     .HasForeignKey(l => l.Id_Rancho);
@@ -126,14 +129,16 @@ namespace GanadoProBackEnd.Data
             {
                 entity.HasKey(e => e.Id_Productor);
                 
-                // Relaciones
+                // Relación con User (FALTANTE)
+                entity.HasOne(p => p.User)
+                    .WithMany(u => u.Productores)
+                    .HasForeignKey(p => p.Id_User)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
                 entity.HasMany(p => p.Animales)
                     .WithOne(a => a.Productores)
                     .HasForeignKey(a => a.Id_Productor);
                 
-                entity.HasMany(p => p.Exportaciones)
-                    .WithOne(e => e.Productor)
-                    .HasForeignKey(e => e.Id_Productor);
                 
                 entity.HasMany(p => p.Ventas)
                     .WithOne(v => v.Productor)
@@ -145,10 +150,10 @@ namespace GanadoProBackEnd.Data
             {
                 entity.HasKey(e => e.Id_Rancho);
                 
-                // Relaciones
                 entity.HasOne(r => r.User)
                     .WithMany(u => u.Ranchos)
-                    .HasForeignKey(r => r.Id_User);
+                    .HasForeignKey(r => r.Id_User)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Configuración de User
@@ -157,12 +162,23 @@ namespace GanadoProBackEnd.Data
                 entity.HasKey(e => e.Id_User);
             });
 
-            // Configuración de Venta (CORRECCIÓN IMPORTANTE AQUÍ)
+            // Configuración de Venta (CORRECCIONES IMPORTANTES)
             modelBuilder.Entity<Venta>(entity =>
             {
                 entity.HasKey(e => e.Id_Venta);
                 
-                // Relaciones
+                // Relación con User (FALTANTE)
+                entity.HasOne(v => v.User)
+                    .WithMany(u => u.Ventas)
+                    .HasForeignKey(v => v.Id_User)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
+                // Relación con Productor (FALTANTE)
+                entity.HasOne(v => v.Productor)
+                    .WithMany(p => p.Ventas)
+                    .HasForeignKey(v => v.Id_Productor)
+                    .OnDelete(DeleteBehavior.Restrict);
+                
                 entity.HasOne(v => v.RanchoOrigen)
                     .WithMany()
                     .HasForeignKey(v => v.Id_Rancho);
@@ -171,24 +187,26 @@ namespace GanadoProBackEnd.Data
                     .WithMany(c => c.Ventas)
                     .HasForeignKey(v => v.Id_Cliente);
                 
-                // Relación muchos-a-muchos con Lote
+                // Relación muchos-a-muchos con Lote (CORREGIDA)
                 entity.HasMany(v => v.LotesVendidos)
                     .WithMany(l => l.Ventas)
                     .UsingEntity<Dictionary<string, object>>(
                         "VentaLotes",
                         j => j.HasOne<Lote>()
                             .WithMany()
-                            .HasForeignKey("Id_Lote"),
+                            .HasForeignKey("Id_Lote")
+                            .OnDelete(DeleteBehavior.Restrict),
                         j => j.HasOne<Venta>()
                             .WithMany()
-                            .HasForeignKey("Id_Venta"),
+                            .HasForeignKey("Id_Venta")
+                            .OnDelete(DeleteBehavior.Restrict),
                         j => j.HasKey("Id_Venta", "Id_Lote")
                     );
             });
 
             // Corrección de nombres para consistencia
             modelBuilder.Entity<Productores>().ToTable("Productores");
-            modelBuilder.Entity<InvetarioExportacion>().ToTable("InventarioExportaciones");
+            
         }
     }
 }
