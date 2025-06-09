@@ -14,7 +14,7 @@ namespace GanadoProBackEnd.Models
         public int Peso { get; set; }
         public string Sexo { get; set; }
         public string Raza { get; set; }
-        public string? Clasificacion { get; set; }
+        public string? Clasificacion { get; set; } //segun la clasificacion de la empresa, vaca gorda, vaca flaca, vaca carnuda
         public int Edad_Meses { get; set; }
         public string? FoliGuiaRemoEntrada { get; set; }
         public string? FoliGuiaRemoSalida { get; set; }

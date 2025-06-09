@@ -2,9 +2,12 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using GanadoProBackEnd.Data;
 using GanadoProBackEnd.Models;
-using GanadoProBackEnd.DTOs;
+using System;
+using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Linq;
 using System.Security.Claims;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 
 namespace GanadoProBackEnd.Controllers
@@ -15,128 +18,201 @@ namespace GanadoProBackEnd.Controllers
     {
         private readonly MyDbContext _context;
 
-        public RanchosController(MyDbContext context) => _context = context;
+        public RanchosController(MyDbContext context)
+        {
+            _context = context;
+        }
 
-        // GET: Todos los ranchos
-[HttpGet]
-[Authorize]
+        // Helper para obtener el ID de usuario autenticado
+        private int? GetCurrentUserId()
+        {
+            // Modificación clave: Usar el claim correcto según tu configuración
+            var userIdClaim = User.FindFirst("id") ?? User.FindFirst(ClaimTypes.NameIdentifier);
+            
+            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out var userId))
+            {
+                return userId;
+            }
+            return null;
+        }
 
-public async Task<ActionResult<IEnumerable<RanchoResponseDto>>> GetRanchos()
-{
+        // GET: Todos los ranchos del usuario actual
+        [HttpGet]
+        [Authorize]
+        public async Task<ActionResult<IEnumerable<RanchoResponseDto>>> GetRanchos()
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized(new { message = "Usuario no autenticado o claim ID faltante" });
+            }
 
-    // Get current user ID from token
-    var userId = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-    if (string.IsNullOrEmpty(userId)) 
-        return Unauthorized();
-        
-    return await _context.Ranchos
-        .Where(r => r.Id_User == int.Parse(userId)) // ADD THIS FILTER
-        .Include(r => r.User)
-        .Include(r => r.Lotes)
-        .Select(r => new RanchoResponseDto
+            return await _context.Ranchos
+                .Where(r => r.Id_User == userId.Value)
+                .Select(r => new RanchoResponseDto
                 {
                     Id_Rancho = r.Id_Rancho,
-                    Id_User = r.Id_User, // Mapear directamente desde el rancho
+                    Id_User = r.Id_User,
                     NombreRancho = r.NombreRancho,
                     Ubicacion = r.Ubicacion,
                     Propietario = r.User.Name,
                     Telefono = r.User.Telefono,
-                    Email = r.User.Email, // Ahora sí tendrá valor
+                    Email = r.User.Email,
                     TotalLotes = r.Lotes.Count
                 })
                 .ToListAsync();
-}
+        }
 
-        // GET: Rancho por ID
+        // GET: Rancho por ID (con validación de propiedad)
         [HttpGet("{id}")]
-[Authorize]
-
-public async Task<ActionResult<RanchoResponseDto>> GetRancho(int id)
-{
-    var rancho = await _context.Ranchos
-        .Include(r => r.User) // ¡Agregar esta línea!
-        .Include(r => r.Lotes)
-        .FirstOrDefaultAsync(r => r.Id_Rancho == id);
-
-    if (rancho == null) return NotFound();
-
-    return new RanchoResponseDto
-    {
-        Id_Rancho = rancho.Id_Rancho,
-        Id_User = rancho.Id_User, // Mapear desde el rancho
-        NombreRancho = rancho.NombreRancho,
-        Ubicacion = rancho.Ubicacion,
-        Propietario = rancho.User.Name,
-        Telefono = rancho.User.Telefono,
-        Email = rancho.User.Email, // Ya no será null
-        TotalLotes = rancho.Lotes.Count
-    };
-}
-
-        // POST: Crear rancho
-        [HttpPost]
-[Authorize]
-
-public async Task<ActionResult<RanchoResponseDto>> CreateRancho([FromBody] CreateRanchoDto ranchoDto)
-{
-    var user = await _context.Users.FindAsync(ranchoDto.Id_User);
-    if (user == null) return BadRequest("Usuario no encontrado");
-
-    var rancho = new Rancho
-    {
-        NombreRancho = ranchoDto.NombreRancho,
-        Ubicacion = ranchoDto.Ubicacion,
-        Id_User = ranchoDto.Id_User,
-        User = user
-    };
-
-    await _context.Ranchos.AddAsync(rancho);
-    await _context.SaveChangesAsync();
-
-    return CreatedAtAction(nameof(GetRancho), new { id = rancho.Id_Rancho }, new RanchoResponseDto
-    {
-        Id_Rancho = rancho.Id_Rancho,
-        Id_User = rancho.Id_User,
-        NombreRancho = rancho.NombreRancho,
-        Ubicacion = rancho.Ubicacion,
-        Propietario = user.Name,
-        Telefono = user.Telefono,
-        Email = user.Email, // Usar el email del usuario
-        TotalLotes = 0
-    });
-}
-
-        // PUT: Actualizar rancho
-        [HttpPut("{id}")]
         [Authorize]
-
-        public async Task<IActionResult> UpdateRancho(int id, [FromBody] UpdateRanchoDto updateDto)
+        public async Task<ActionResult<RanchoResponseDto>> GetRancho(int id)
         {
-            var rancho = await _context.Ranchos.FindAsync(id);
-            if (rancho == null) return NotFound();
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized(new { message = "Usuario no autenticado o claim ID faltante" });
+            }
 
-            rancho.NombreRancho = updateDto.NombreRancho ?? rancho.NombreRancho;
-            rancho.Ubicacion = updateDto.Ubicacion ?? rancho.Ubicacion;
+            var rancho = await _context.Ranchos
+                .Where(r => r.Id_Rancho == id && r.Id_User == userId.Value)
+                .Select(r => new RanchoResponseDto
+                {
+                    Id_Rancho = r.Id_Rancho,
+                    Id_User = r.Id_User,
+                    NombreRancho = r.NombreRancho,
+                    Ubicacion = r.Ubicacion,
+                    Propietario = r.User.Name,
+                    Telefono = r.User.Telefono,
+                    Email = r.User.Email,
+                    TotalLotes = r.Lotes.Count
+                })
+                .FirstOrDefaultAsync();
 
+            return rancho != null ? rancho : NotFound();
+        }
 
-            _context.Entry(rancho).State = EntityState.Modified;
+        // POST: Crear rancho (usar usuario actual)
+        [HttpPost]
+        [Authorize]
+        public async Task<ActionResult<RanchoResponseDto>> CreateRancho([FromBody] CreateRanchoDto ranchoDto)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized(new { message = "Usuario no autenticado o claim ID faltante" });
+            }
+
+            // Verificar que el usuario exista
+            var userExists = await _context.Users.AnyAsync(u => u.Id_User == userId.Value);
+            if (!userExists)
+            {
+                return BadRequest("El usuario autenticado no existe en la base de datos");
+            }
+
+            var rancho = new Rancho
+            {
+                NombreRancho = ranchoDto.NombreRancho,
+                Ubicacion = ranchoDto.Ubicacion,
+                Id_User = userId.Value
+            };
+
+            _context.Ranchos.Add(rancho);
             await _context.SaveChangesAsync();
 
+            // Recargar la entidad con las relaciones
+            var createdRancho = await _context.Ranchos
+                .Include(r => r.User)
+                .FirstOrDefaultAsync(r => r.Id_Rancho == rancho.Id_Rancho);
+
+            if (createdRancho == null)
+            {
+                return NotFound();
+            }
+
+            return new RanchoResponseDto
+            {
+                Id_Rancho = createdRancho.Id_Rancho,
+                Id_User = createdRancho.Id_User,
+                NombreRancho = createdRancho.NombreRancho,
+                Ubicacion = createdRancho.Ubicacion,
+                Propietario = createdRancho.User?.Name,
+                Telefono = createdRancho.User?.Telefono,
+                Email = createdRancho.User?.Email,
+                TotalLotes = 0
+            };
+        }
+
+        // PUT: Actualizar rancho (con validación de propiedad)
+        [HttpPut("{id}")]
+        [Authorize]
+        public async Task<IActionResult> UpdateRancho(int id, [FromBody] UpdateRanchoDto updateDto)
+        {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized(new { message = "Usuario no autenticado o claim ID faltante" });
+            }
+
+            var rancho = await _context.Ranchos
+                .FirstOrDefaultAsync(r => r.Id_Rancho == id && r.Id_User == userId.Value);
+
+            if (rancho == null)
+            {
+                return NotFound();
+            }
+
+            // Actualizar propiedades
+            if (!string.IsNullOrWhiteSpace(updateDto.NombreRancho))
+            {
+                rancho.NombreRancho = updateDto.NombreRancho;
+            }
+
+            if (!string.IsNullOrWhiteSpace(updateDto.Ubicacion))
+            {
+                rancho.Ubicacion = updateDto.Ubicacion;
+            }
+
+            // Si se proporciona un nuevo Id_User, transferir la propiedad
+            if (updateDto.Id_User.HasValue)
+            {
+                // Verificar que el nuevo usuario exista
+                var newUserExists = await _context.Users.AnyAsync(u => u.Id_User == updateDto.Id_User.Value);
+                if (!newUserExists)
+                {
+                    return BadRequest("El nuevo usuario propietario no existe");
+                }
+                rancho.Id_User = updateDto.Id_User.Value;
+            }
+
+            await _context.SaveChangesAsync();
             return NoContent();
         }
 
-        // DELETE: Eliminar rancho
+        // DELETE: Eliminar rancho (con validación de propiedad)
         [HttpDelete("{id}")]
         [Authorize]
-
         public async Task<IActionResult> DeleteRancho(int id)
         {
+            var userId = GetCurrentUserId();
+            if (userId == null)
+            {
+                return Unauthorized(new { message = "Usuario no autenticado o claim ID faltante" });
+            }
+
             var rancho = await _context.Ranchos
                 .Include(r => r.Lotes)
-                .FirstOrDefaultAsync(r => r.Id_Rancho == id);
+                .FirstOrDefaultAsync(r => r.Id_Rancho == id && r.Id_User == userId.Value);
 
-            if (rancho == null) return NotFound();
-            if (rancho.Lotes.Any()) return BadRequest("No se puede eliminar un rancho con lotes");
+            if (rancho == null)
+            {
+                return NotFound();
+            }
+
+            if (rancho.Lotes.Any())
+            {
+                return BadRequest("No se puede eliminar un rancho con lotes asociados");
+            }
 
             _context.Ranchos.Remove(rancho);
             await _context.SaveChangesAsync();
@@ -148,16 +224,21 @@ public async Task<ActionResult<RanchoResponseDto>> CreateRancho([FromBody] Creat
     // DTOs
     public class CreateRanchoDto
     {
-        [Required] public string NombreRancho { get; set; }
+        [Required(ErrorMessage = "El nombre del rancho es obligatorio")]
+        [StringLength(50, ErrorMessage = "El nombre del rancho no puede exceder los 50 caracteres")]
+        public string NombreRancho { get; set; }
+
         public string Ubicacion { get; set; }
-        public int Id_User { get; set; }
     }
 
     public class UpdateRanchoDto
     {
-        public string? NombreRancho { get; set; }
-        public string? Ubicacion { get; set; }
+        [StringLength(50, ErrorMessage = "El nombre del rancho no puede exceder los 50 caracteres")]
+        public string NombreRancho { get; set; }
 
+        public string Ubicacion { get; set; }
+
+        public int? Id_User { get; set; }
     }
 
     public class RanchoResponseDto
