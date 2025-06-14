@@ -22,6 +22,25 @@ namespace GanadoProBackEnd.Controllers
         {
             _context = context;
         }
+                [HttpGet]
+        public async Task<ActionResult<IEnumerable<ClienteResponseDTO>>> GetClientes()
+        {
+            return await _context.Clientes
+                .Select(c => new ClienteResponseDTO
+                {
+                    Id_Cliente = c.Id_Cliente,
+                    Id_User = c.Id_User,
+                    Name = c.Name,
+                    Propietario = c.Propietario,
+                    Domicilio = c.Domicilio,
+                    Localidad = c.Localidad,
+                    Municipio = c.Municipio,
+                    Entidad = c.Entidad,
+                    Upp = c.Upp,
+                    Rol = c.Rol
+                })
+                .ToListAsync();
+        }
 
         // POST: api/Clientes
         [HttpPost]
@@ -196,40 +215,33 @@ namespace GanadoProBackEnd.Controllers
 
             return NoContent();
         }
-
-        // DELETE: api/Clientes/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCliente(int id)
         {
-            var cliente = await _context.Clientes
-                .Include(c => c.Animales)
-                .Include(c => c.Lotes)
-                .Include(c => c.Ventas)
-                .FirstOrDefaultAsync(c => c.Id_Cliente == id);
+            var cliente = await _context.Clientes.FindAsync(id);
+            if (cliente == null) return NotFound();
 
-            if (cliente == null)
-            {
-                return NotFound();
-            }
+            // Verificar relaciones sin cargar entidades completas
+            bool hasRelations = await _context.Animales.AnyAsync(a => a.Id_Cliente == id)
+                            || await _context.Lotes.AnyAsync(l => l.Id_Cliente == id)
+                            || await _context.Ventas.AnyAsync(v => v.Id_Cliente == id);
 
-            // Verificar relaciones existentes
-            if (cliente.Animales.Any() || cliente.Lotes.Any() || cliente.Ventas.Any())
+            if (hasRelations)
             {
-                return BadRequest(new
+                return BadRequest(new 
                 {
-                    message = "No se puede eliminar el cliente/productor porque tiene registros relacionados",
-                    detalles = new
+                    message = "No se puede eliminar por registros relacionados",
+                    relaciones = new 
                     {
-                        animales = cliente.Animales.Count,
-                        lotes = cliente.Lotes.Count,
-                        ventas = cliente.Ventas.Count
+                        animales = await _context.Animales.CountAsync(a => a.Id_Cliente == id),
+                        lotes = await _context.Lotes.CountAsync(l => l.Id_Cliente == id),
+                        ventas = await _context.Ventas.CountAsync(v => v.Id_Cliente == id)
                     }
                 });
             }
 
             _context.Clientes.Remove(cliente);
             await _context.SaveChangesAsync();
-
             return NoContent();
         }
 
