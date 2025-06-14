@@ -35,14 +35,14 @@ namespace GanadoProBackEnd.Models
  
     public int? Id_Lote { get; set; }
     public int? Id_Rancho { get; set; }
-    public int? Id_Productor { get; set; }
+   
     public int? Id_Cliente { get; set; }
 
     // Propiedades de navegación
     public Lote Lote { get; set; }
     public User User { get; set; }
     public Rancho Rancho { get; set; }
-    public Productores Productores { get; set; }
+    
     public Clientes Clientes { get; set; }
         public DateTime FechaRegistro { get; internal set; }
     }

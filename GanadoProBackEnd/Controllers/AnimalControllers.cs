@@ -24,7 +24,6 @@ namespace GanadoProBackEnd.Controllers
             var animales = await _context.Animales
                 .Include(a => a.Lote)
                 .Include(a => a.Rancho)
-                .Include(a => a.Productores)
                 .Include(a => a.Clientes)
                 .ToListAsync();
 
@@ -38,7 +37,7 @@ public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesCompr
         .Where(a => !string.IsNullOrEmpty(a.UppOrigen) && a.Estado != "EnStock")
         .Include(a => a.Lote)
         .Include(a => a.Rancho)
-        .Include(a => a.Productores)
+        
         .Include(a => a.Clientes)
         .ToListAsync();
 
@@ -54,7 +53,7 @@ public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesCompr
             var animal = await _context.Animales
                 .Include(a => a.Lote)
                 .Include(a => a.Rancho)
-                .Include(a => a.Productores)
+                
                 .Include(a => a.Clientes)
                 .FirstOrDefaultAsync(a => a.Id_Animal == id);
 
@@ -64,80 +63,95 @@ public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesCompr
         }
 
         // POST: Crear nuevo animal
-        [HttpPost]
+       [HttpPost]
+public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] CreateAnimalDto animalDto)
+{
+    // Validar rancho
+    var rancho = await _context.Ranchos.FindAsync(animalDto.Id_Rancho);
+    if (rancho == null) 
+        return BadRequest(new { Message = "Rancho no existe", Field = "Id_Rancho" });
+
+    // Validar cliente (puede ser productor o cliente según su rol)
+    Clientes cliente = null;
+    if (animalDto.Id_Cliente.HasValue)
+    {
+        cliente = await _context.Clientes.FindAsync(animalDto.Id_Cliente.Value);
         
-        public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] CreateAnimalDto animalDto)
+        if (cliente == null) 
+            return BadRequest(new {
+                Message = $"No se encontró un cliente/productor con ID: {animalDto.Id_Cliente}",
+                Field = "Id_Cliente"
+            });
+if (animalDto.Id_Lote.HasValue && animalDto.Id_Lote.Value > 0)
+{
+    var lote = await _context.Lotes.FindAsync(animalDto.Id_Lote.Value);
+    if (lote == null) 
+        return BadRequest(new { Message = "Lote no existe", Field = "Id_Lote" });
+}
+else
+{
+    // Asegurar que sea null si no se proporciona o es 0
+    animalDto.Id_Lote = null;
+}
+        // Asignar UPP según corresponda
+        if (cliente.Rol == "Productor")
         {
-            // Validar rancho
-            var rancho = await _context.Ranchos.FindAsync(animalDto.Id_Rancho);
-            if (rancho == null) return BadRequest("Rancho no existe");
+            animalDto.UppOrigen = cliente.Upp;
+        }
+        else if (cliente.Rol == "Cliente")
+        {
+            animalDto.UppDestino = cliente.Upp;
+        }
+    }
 
-            // Buscar productor por UPP si se proporciona
-            Productores productor = null;
-            if (!string.IsNullOrEmpty(animalDto.UppOrigen))
-            {
-                productor = await _context.Productores
-                    .FirstOrDefaultAsync(p => p.Upp == animalDto.UppOrigen);
-                
-                if (productor == null) 
-                    return BadRequest($"No se encontró productor con UPP: {animalDto.UppOrigen}");
-            }
-
-            // Buscar cliente por UPP si se proporciona
-            Clientes cliente = null;
-            if (!string.IsNullOrEmpty(animalDto.UppDestino))
-            {
-                cliente = await _context.Clientes
-                    .FirstOrDefaultAsync(c => c.Upp == animalDto.UppDestino);
-                
-                if (cliente == null) 
-                    return BadRequest($"No se encontró cliente con UPP: {animalDto.UppDestino}");
-            }
-
-            // Validar lote si se proporciona
-            if (animalDto.Id_Lote.HasValue)
+    // Validar lote solo si se proporciona un valor (campo opcional)
+            if (animalDto.Id_Lote.HasValue && animalDto.Id_Lote.Value > 0)
             {
                 var lote = await _context.Lotes.FindAsync(animalDto.Id_Lote.Value);
-                if (lote == null) return BadRequest("Lote no existe");
+                if (lote == null)
+                    return BadRequest(new { Message = "Lote no existe", Field = "Id_Lote" });
+            }
+            else
+            {
+                // Asegurar que sea null si no se proporciona o es 0
+                animalDto.Id_Lote = null;
             }
 
-            var animal = new Animal
-            {
-                Id_User = 1, // Obtener del usuario autenticado
-                Id_Rancho = animalDto.Id_Rancho,
-                Arete = animalDto.Arete,
-                Peso = animalDto.Peso ?? 0,
-                Sexo = animalDto.Sexo,
-                Clasificacion = animalDto.Clasificacion,
-                Raza = animalDto.Raza,
-                Edad_Meses = animalDto.Edad_Meses,
-                FoliGuiaRemoEntrada = animalDto.FoliGuiaRemoEntrada,
-                FoliGuiaRemoSalida = animalDto.FoliGuiaRemoSalida,
-                UppOrigen = animalDto.UppOrigen,
-                UppDestino = animalDto.UppDestino,
-                FechaIngreso = animalDto.FechaIngreso ?? DateTime.Now,
-                FechaSalida = animalDto.FechaSalida,
-                MotivoSalida = animalDto.MotivoSalida,
-                Observaciones = animalDto.Observaciones,
-                CertificadoZootanitario = animalDto.CertificadoZootanitario,
-                ContanciaGarrapaticida = animalDto.ContanciaGarrapaticida,
-                FolioTB = animalDto.FolioTB,
-                ValidacionConside_ID = animalDto.ValidacionConside_ID,
-                FierroCliente = animalDto.FierroCliente != null ? Convert.FromBase64String(animalDto.FierroCliente) : null,
-                RazonSocial = animalDto.RazonSocial,
-                Estado = animalDto.Estado,
-                Id_Lote = animalDto.Id_Lote,
-                Id_Productor = productor?.Id_Productor,
-                Id_Cliente = cliente?.Id_Cliente,
-                FechaRegistro = DateTime.Now
-            };
+    var animal = new Animal
+    {
+        Id_User = 1, // Obtener del usuario autenticado
+        Id_Rancho = animalDto.Id_Rancho,
+        Arete = animalDto.Arete,
+        Peso = animalDto.Peso ?? 0,
+        Sexo = animalDto.Sexo,
+        Clasificacion = animalDto.Clasificacion,
+        Raza = animalDto.Raza,
+        Edad_Meses = animalDto.Edad_Meses,
+        FoliGuiaRemoEntrada = animalDto.FoliGuiaRemoEntrada,
+        FoliGuiaRemoSalida = animalDto.FoliGuiaRemoSalida,
+        UppOrigen = animalDto.UppOrigen,
+        UppDestino = animalDto.UppDestino,
+        FechaIngreso = animalDto.FechaIngreso ?? DateTime.Now,
+        FechaSalida = animalDto.FechaSalida,
+        MotivoSalida = animalDto.MotivoSalida,
+        Observaciones = animalDto.Observaciones,
+        CertificadoZootanitario = animalDto.CertificadoZootanitario,
+        ContanciaGarrapaticida = animalDto.ContanciaGarrapaticida,
+        FolioTB = animalDto.FolioTB,
+        ValidacionConside_ID = animalDto.ValidacionConside_ID,
+        FierroCliente = animalDto.FierroCliente != null ? Convert.FromBase64String(animalDto.FierroCliente) : null,
+        RazonSocial = animalDto.RazonSocial,
+        Estado = animalDto.Estado,
+        Id_Lote = animalDto.Id_Lote, // Puede ser null
+        Id_Cliente = animalDto.Id_Cliente,
+        FechaRegistro = DateTime.Now
+    };
 
-            await _context.Animales.AddAsync(animal);
-            await _context.SaveChangesAsync();
+    await _context.Animales.AddAsync(animal);
+    await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetAnimal), new { id = animal.Id_Animal }, MapAnimalToDto(animal));
-        }
-
+    return CreatedAtAction(nameof(GetAnimal), new { id = animal.Id_Animal }, MapAnimalToDto(animal));
+}
         // PUT: Asignar lote a múltiples animales (RUTA FIJA - ANTES DE {id})
         [HttpPut("asignar-lote")]
         
@@ -165,24 +179,14 @@ public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesCompr
         public async Task<IActionResult> UpdateAnimal(int id, [FromBody] UpdateAnimalDto updateDto)
         {
             var animal = await _context.Animales
-                .Include(a => a.Productores)
+                
                 .Include(a => a.Clientes)
                 .FirstOrDefaultAsync(a => a.Id_Animal == id);
             
             if (animal == null) return NotFound();
 
-            // Buscar productor por UPP si se actualiza
-            if (!string.IsNullOrEmpty(updateDto.UppOrigen) && updateDto.UppOrigen != animal.UppOrigen)
-            {
-                var productor = await _context.Productores
-                    .FirstOrDefaultAsync(p => p.Upp == updateDto.UppOrigen);
-                
-                if (productor == null) 
-                    return BadRequest($"No se encontró productor con UPP: {updateDto.UppOrigen}");
-                
-                animal.Id_Productor = productor.Id_Productor;
-                animal.UppOrigen = updateDto.UppOrigen;
-            }
+        
+           
 
             // Buscar cliente por UPP si se actualiza
             if (!string.IsNullOrEmpty(updateDto.UppDestino) && updateDto.UppDestino != animal.UppDestino)
@@ -288,9 +292,9 @@ public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesCompr
                 Estado = animal.Estado,
                 Id_Lote = animal.Id_Lote,
                 Id_Rancho = animal.Id_Rancho,
-                Id_Productor = animal.Id_Productor,
+                
                 Id_Cliente = animal.Id_Cliente,
-                NombreProductor = animal.Productores?.Name,
+               
                 NombreCliente = animal.Clientes?.Name,
                 NombreRancho = animal.Rancho?.NombreRancho
             };
@@ -332,8 +336,7 @@ public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesCompr
             [Required]
             public int Id_Rancho { get; set; }
             
-            public int? Id_Productor { get; set; }
-            public int? Id_Cliente { get; set; }
+           public int? Id_Cliente { get; set; }
         }
 
         public class UpdateAnimalDto

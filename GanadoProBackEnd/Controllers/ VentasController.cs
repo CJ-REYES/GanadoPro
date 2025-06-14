@@ -23,8 +23,7 @@ namespace GanadoProBackEnd.Controllers
             if (!await _context.Clientes.AnyAsync(c => c.Id_Cliente == ventaDto.Id_Cliente))
                 return BadRequest("El cliente no existe");
 
-            if (!await _context.Productores.AnyAsync(p => p.Id_Productor == ventaDto.Id_Productor))
-                return BadRequest("El productor no existe");
+            
 
             if (!await _context.Ranchos.AnyAsync(r => r.Id_Rancho == ventaDto.Id_Rancho))
                 return BadRequest("El rancho no existe");

@@ -15,9 +15,7 @@ namespace GanadoProBackEnd.Data
         public DbSet<Animal> Animales { get; set; }
         public DbSet<Clientes> Clientes { get; set; }
         public DbSet<Fierros> Fierros { get; set; }
-        public DbSet<Lote> Lotes { get; set; }
-        public DbSet<Productores> Productores { get; set; }
-        public DbSet<Rancho> Ranchos { get; set; }
+        public DbSet<Lote> Lotes { get; set; }        public DbSet<Rancho> Ranchos { get; set; }
         public DbSet<User> Users { get; set; }
         public DbSet<Venta> Ventas { get; set; }
 
@@ -44,10 +42,7 @@ namespace GanadoProBackEnd.Data
                     .HasForeignKey(a => a.Id_Rancho)
                     .OnDelete(DeleteBehavior.SetNull);
                 
-                entity.HasOne(a => a.Productores)
-                    .WithMany(p => p.Animales)
-                    .HasForeignKey(a => a.Id_Productor)
-                    .OnDelete(DeleteBehavior.SetNull);
+                
                 
                 entity.HasOne(a => a.Clientes)
                     .WithMany(c => c.Animales)
@@ -125,35 +120,20 @@ namespace GanadoProBackEnd.Data
             });
 
             // Configuración de Productores
-            modelBuilder.Entity<Productores>(entity =>
-            {
-                entity.HasKey(e => e.Id_Productor);
-                
-                // Relación con User (FALTANTE)
-                entity.HasOne(p => p.User)
-                    .WithMany(u => u.Productores)
-                    .HasForeignKey(p => p.Id_User)
-                    .OnDelete(DeleteBehavior.Restrict);
-                
-                entity.HasMany(p => p.Animales)
-                    .WithOne(a => a.Productores)
-                    .HasForeignKey(a => a.Id_Productor);
-                
-                
-                entity.HasMany(p => p.Ventas)
-                    .WithOne(v => v.Productor)
-                    .HasForeignKey(v => v.Id_Productor);
-            });
-
+           
             // Configuración de Rancho
             modelBuilder.Entity<Rancho>(entity =>
             {
                 entity.HasKey(e => e.Id_Rancho);
-                
+
                 entity.HasOne(r => r.User)
                     .WithMany(u => u.Ranchos)
                     .HasForeignKey(r => r.Id_User)
                     .OnDelete(DeleteBehavior.Restrict);
+                    modelBuilder.Entity<Rancho>()
+    .HasOne(r => r.User)
+    .WithMany(u => u.Ranchos)
+    .HasForeignKey(r => r.Id_User);
             });
 
             // Configuración de User
@@ -166,6 +146,12 @@ namespace GanadoProBackEnd.Data
             modelBuilder.Entity<Venta>(entity =>
             {
                 entity.HasKey(e => e.Id_Venta);
+                modelBuilder.Entity<Rancho>()
+    .HasOne(r => r.User)
+    .WithMany(u => u.Ranchos)
+    .HasForeignKey(r => r.Id_User)
+    .OnDelete(DeleteBehavior.Restrict); // o Cascade, según lo que quieras
+
                 
                 // Relación con User (FALTANTE)
                 entity.HasOne(v => v.User)
@@ -173,20 +159,7 @@ namespace GanadoProBackEnd.Data
                     .HasForeignKey(v => v.Id_User)
                     .OnDelete(DeleteBehavior.Restrict);
                 
-                // Relación con Productor (FALTANTE)
-                entity.HasOne(v => v.Productor)
-                    .WithMany(p => p.Ventas)
-                    .HasForeignKey(v => v.Id_Productor)
-                    .OnDelete(DeleteBehavior.Restrict);
-                
-                entity.HasOne(v => v.RanchoOrigen)
-                    .WithMany()
-                    .HasForeignKey(v => v.Id_Rancho);
-                
-                entity.HasOne(v => v.Cliente)
-                    .WithMany(c => c.Ventas)
-                    .HasForeignKey(v => v.Id_Cliente);
-                
+               
                 // Relación muchos-a-muchos con Lote (CORREGIDA)
                 entity.HasMany(v => v.LotesVendidos)
                     .WithMany(l => l.Ventas)
@@ -204,8 +177,7 @@ namespace GanadoProBackEnd.Data
                     );
             });
 
-            // Corrección de nombres para consistencia
-            modelBuilder.Entity<Productores>().ToTable("Productores");
+            
             
         }
     }

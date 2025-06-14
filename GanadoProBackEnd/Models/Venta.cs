@@ -23,7 +23,7 @@ namespace GanadoProBackEnd.Models
         public List<Lote> LotesVendidos { get; set; } = new List<Lote>();
         public Rancho? RanchoOrigen { get; set; }
         public Clientes? Cliente { get; set; }
-        public Productores? Productor { get; set; }
+        
         public User User { get; set; } // Usuario que realiza la venta
     }
 }
