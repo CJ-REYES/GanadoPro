@@ -9,11 +9,13 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 using System;
+using Microsoft.AspNetCore.Authorization;
 
 namespace GanadoProBackEnd.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class ClientesController : ControllerBase
     {
         private readonly MyDbContext _context;
@@ -22,7 +24,9 @@ namespace GanadoProBackEnd.Controllers
         {
             _context = context;
         }
-                [HttpGet]
+        [HttpGet]
+       
+
         public async Task<ActionResult<IEnumerable<ClienteResponseDTO>>> GetClientes()
         {
             return await _context.Clientes
@@ -44,6 +48,7 @@ namespace GanadoProBackEnd.Controllers
 
         // POST: api/Clientes
         [HttpPost]
+      
         public async Task<ActionResult<ClienteResponseDTO>> PostCliente([FromBody] ClienteCreateDTO clienteDTO)
         {
             if (clienteDTO == null)
@@ -140,6 +145,7 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: api/Clientes/5
         [HttpGet("{id}")]
+       
         public async Task<ActionResult<ClienteResponseDTO>> GetCliente(int id)
         {
             var cliente = await _context.Clientes.FindAsync(id);
@@ -166,6 +172,7 @@ namespace GanadoProBackEnd.Controllers
 
         // PUT: api/Clientes/5
         [HttpPut("{id}")]
+ 
         public async Task<IActionResult> PutCliente(int id, [FromBody] ClienteUpdateDTO clienteDTO)
         {
             if (clienteDTO == null)
@@ -216,6 +223,7 @@ namespace GanadoProBackEnd.Controllers
             return NoContent();
         }
         [HttpDelete("{id}")]
+      
         public async Task<IActionResult> DeleteCliente(int id)
         {
             var cliente = await _context.Clientes.FindAsync(id);
@@ -228,10 +236,10 @@ namespace GanadoProBackEnd.Controllers
 
             if (hasRelations)
             {
-                return BadRequest(new 
+                return BadRequest(new
                 {
                     message = "No se puede eliminar por registros relacionados",
-                    relaciones = new 
+                    relaciones = new
                     {
                         animales = await _context.Animales.CountAsync(a => a.Id_Cliente == id),
                         lotes = await _context.Lotes.CountAsync(l => l.Id_Cliente == id),

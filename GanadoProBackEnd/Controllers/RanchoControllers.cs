@@ -6,7 +6,6 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.Linq;
-using System.Security.Claims;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 
@@ -14,6 +13,7 @@ namespace GanadoProBackEnd.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class RanchosController : ControllerBase
     {
         private readonly MyDbContext _context;
@@ -23,32 +23,12 @@ namespace GanadoProBackEnd.Controllers
             _context = context;
         }
 
-        // Helper para obtener el ID de usuario autenticado
-        private int? GetCurrentUserId()
-        {
-            // Modificación clave: Usar el claim correcto según tu configuración
-            var userIdClaim = User.FindFirst("id") ?? User.FindFirst(ClaimTypes.NameIdentifier);
-            
-            if (userIdClaim != null && int.TryParse(userIdClaim.Value, out var userId))
-            {
-                return userId;
-            }
-            return null;
-        }
-
-        // GET: Todos los ranchos del usuario actual
+        // GET: Todos los ranchos
         [HttpGet]
-        [Authorize]
+      
         public async Task<ActionResult<IEnumerable<RanchoResponseDto>>> GetRanchos()
         {
-            var userId = GetCurrentUserId();
-            if (userId == null)
-            {
-                return Unauthorized(new { message = "Usuario no autenticado o claim ID faltante" });
-            }
-
             return await _context.Ranchos
-                .Where(r => r.Id_User == userId.Value)
                 .Select(r => new RanchoResponseDto
                 {
                     Id_Rancho = r.Id_Rancho,
@@ -63,19 +43,13 @@ namespace GanadoProBackEnd.Controllers
                 .ToListAsync();
         }
 
-        // GET: Rancho por ID (con validación de propiedad)
+        // GET: Rancho por ID
         [HttpGet("{id}")]
-        [Authorize]
+   
         public async Task<ActionResult<RanchoResponseDto>> GetRancho(int id)
         {
-            var userId = GetCurrentUserId();
-            if (userId == null)
-            {
-                return Unauthorized(new { message = "Usuario no autenticado o claim ID faltante" });
-            }
-
             var rancho = await _context.Ranchos
-                .Where(r => r.Id_Rancho == id && r.Id_User == userId.Value)
+                .Where(r => r.Id_Rancho == id)
                 .Select(r => new RanchoResponseDto
                 {
                     Id_Rancho = r.Id_Rancho,
@@ -92,29 +66,23 @@ namespace GanadoProBackEnd.Controllers
             return rancho != null ? rancho : NotFound();
         }
 
-        // POST: Crear rancho (usar usuario actual)
+        // POST: Crear nuevo rancho
         [HttpPost]
-        [Authorize]
+ 
         public async Task<ActionResult<RanchoResponseDto>> CreateRancho([FromBody] CreateRanchoDto ranchoDto)
         {
-            var userId = GetCurrentUserId();
-            if (userId == null)
-            {
-                return Unauthorized(new { message = "Usuario no autenticado o claim ID faltante" });
-            }
-
             // Verificar que el usuario exista
-            var userExists = await _context.Users.AnyAsync(u => u.Id_User == userId.Value);
+            var userExists = await _context.Users.AnyAsync(u => u.Id_User == ranchoDto.Id_User);
             if (!userExists)
             {
-                return BadRequest("El usuario autenticado no existe en la base de datos");
+                return BadRequest("El usuario especificado no existe en la base de datos");
             }
 
             var rancho = new Rancho
             {
                 NombreRancho = ranchoDto.NombreRancho,
                 Ubicacion = ranchoDto.Ubicacion,
-                Id_User = userId.Value
+                Id_User = ranchoDto.Id_User
             };
 
             _context.Ranchos.Add(rancho);
@@ -143,19 +111,13 @@ namespace GanadoProBackEnd.Controllers
             };
         }
 
-        // PUT: Actualizar rancho (con validación de propiedad)
+        // PUT: Actualizar rancho
         [HttpPut("{id}")]
-        [Authorize]
+    
         public async Task<IActionResult> UpdateRancho(int id, [FromBody] UpdateRanchoDto updateDto)
         {
-            var userId = GetCurrentUserId();
-            if (userId == null)
-            {
-                return Unauthorized(new { message = "Usuario no autenticado o claim ID faltante" });
-            }
-
             var rancho = await _context.Ranchos
-                .FirstOrDefaultAsync(r => r.Id_Rancho == id && r.Id_User == userId.Value);
+                .FirstOrDefaultAsync(r => r.Id_Rancho == id);
 
             if (rancho == null)
             {
@@ -189,20 +151,14 @@ namespace GanadoProBackEnd.Controllers
             return NoContent();
         }
 
-        // DELETE: Eliminar rancho (con validación de propiedad)
+        // DELETE: Eliminar rancho
         [HttpDelete("{id}")]
-        [Authorize]
+    
         public async Task<IActionResult> DeleteRancho(int id)
         {
-            var userId = GetCurrentUserId();
-            if (userId == null)
-            {
-                return Unauthorized(new { message = "Usuario no autenticado o claim ID faltante" });
-            }
-
             var rancho = await _context.Ranchos
                 .Include(r => r.Lotes)
-                .FirstOrDefaultAsync(r => r.Id_Rancho == id && r.Id_User == userId.Value);
+                .FirstOrDefaultAsync(r => r.Id_Rancho == id);
 
             if (rancho == null)
             {
@@ -229,6 +185,9 @@ namespace GanadoProBackEnd.Controllers
         public string NombreRancho { get; set; }
 
         public string Ubicacion { get; set; }
+        
+        [Required(ErrorMessage = "El ID de usuario es obligatorio")]
+        public int Id_User { get; set; }
     }
 
     public class UpdateRanchoDto

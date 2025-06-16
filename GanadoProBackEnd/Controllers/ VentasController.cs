@@ -5,11 +5,13 @@ using GanadoProBackEnd.Data;
 using GanadoProBackEnd.Models;
 using GanadoProBackEnd.DTOs;
 using System.Linq;
+using Microsoft.AspNetCore.Authorization;
 
 namespace GanadoProBackEnd.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
+    [Authorize]
     public class VentasController : ControllerBase
     {
         private readonly MyDbContext _context;
@@ -18,12 +20,13 @@ namespace GanadoProBackEnd.Controllers
 
         // POST: api/Ventas
         [HttpPost]
+      
         public async Task<ActionResult<VentaResponseDto>> ProgramarVenta([FromBody] CreateVentaDto ventaDto)
         {
             if (!await _context.Clientes.AnyAsync(c => c.Id_Cliente == ventaDto.Id_Cliente))
                 return BadRequest("El cliente no existe");
 
-            
+
 
             if (!await _context.Ranchos.AnyAsync(r => r.Id_Rancho == ventaDto.Id_Rancho))
                 return BadRequest("El rancho no existe");
@@ -75,6 +78,7 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: api/Ventas/5
         [HttpGet("{id}")]
+      
         public async Task<ActionResult<VentaResponseDto>> GetVenta(int id)
         {
             var venta = await _context.Ventas
@@ -88,6 +92,7 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: api/Ventas/AnimalesVendidos
         [HttpGet("AnimalesVendidos")]
+     
         public async Task<ActionResult<IEnumerable<AnimalVendidoDto>>> GetAnimalesVendidos()
         {
             var animales = await _context.Animales
@@ -158,6 +163,7 @@ namespace GanadoProBackEnd.Controllers
 
         // POST: api/Ventas/ActualizarEstado/5
         [HttpPost("ActualizarEstado/{idVenta}")]
+    
         public async Task<IActionResult> ActualizarEstadoAnimalesVendidos(int idVenta)
         {
             var venta = await _context.Ventas

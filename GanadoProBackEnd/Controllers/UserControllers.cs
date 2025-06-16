@@ -15,7 +15,7 @@ namespace GanadoProBackEnd.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
-    [EnableCors("AllowAll")]
+[Authorize]
     public class UsersController : ControllerBase
     {
         private readonly MyDbContext _context;
@@ -29,7 +29,8 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: api/Users
         [HttpGet]
-        [Authorize]
+        
+     
         public async Task<ActionResult<IEnumerable<UserResponseDto>>> GetUsers()
         {
             return await _context.Users
@@ -40,7 +41,7 @@ namespace GanadoProBackEnd.Controllers
                     Email = u.Email,
                     Upp = u.Upp,
                     Telefono = u.Telefono,
-                 
+
                 })
                 .ToListAsync();
         }
@@ -62,26 +63,27 @@ namespace GanadoProBackEnd.Controllers
                 Password = BCrypt.Net.BCrypt.HashPassword(userDto.Password),
                 Upp = userDto.Upp ?? string.Empty,
                 Telefono = userDto.Telefono,
-              
+         
             };
 
             await _context.Users.AddAsync(user);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetUser), new { id = user.Id_User }, new UserResponseDto
-            {
-                Id_User = user.Id_User,
-                Name = user.Name,
-                Email = user.Email,
-                Upp = user.Upp,
-                Telefono = user.Telefono,
-           
-            });
+        return CreatedAtAction(nameof(GetUser), new { id = user.Id_User }, new UserResponseDto
+        {
+            Id_User = user.Id_User,
+            Name = user.Name,
+            Email = user.Email,
+            Upp = user.Upp,
+            Telefono = user.Telefono,
+      
+        });
         }
 
         // GET: api/Users/5
         [HttpGet("{id}")]
-        [Authorize]
+      
+ 
         [ProducesResponseType(StatusCodes.Status200OK)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<ActionResult<UserResponseDto>> GetUser(int id)
@@ -98,13 +100,14 @@ namespace GanadoProBackEnd.Controllers
                 Email = user.Email,
                 Upp = user.Upp,
                 Telefono = user.Telefono,
-            
+        
             };
         }
 
         // PUT: api/Users/5
         [HttpPut("{id}")]
-        [Authorize]
+       
+
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status400BadRequest)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -130,6 +133,7 @@ namespace GanadoProBackEnd.Controllers
 
         // DELETE: api/Users/5
         [HttpDelete("{id}")]
+      
         [ProducesResponseType(StatusCodes.Status204NoContent)]
         [ProducesResponseType(StatusCodes.Status404NotFound)]
         public async Task<IActionResult> DeleteUser(int id)
@@ -169,7 +173,7 @@ namespace GanadoProBackEnd.Controllers
                     Email = user.Email,
                     Upp = user.Upp,
                     Telefono = user.Telefono,
-                  
+                   
                 }
             });
         }
@@ -184,13 +188,12 @@ namespace GanadoProBackEnd.Controllers
                 var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
                 var credentials = new SigningCredentials(securityKey, SecurityAlgorithms.HmacSha256);
 
-                var claims = new[]
-                {
-                    new Claim(JwtRegisteredClaimNames.Sub, user.Email),
-                    new Claim("id", user.Id_User.ToString()),
-                  
-                };
-
+var claims = new[]
+{
+    new Claim(JwtRegisteredClaimNames.Sub, user.Id_User.ToString()), // ID de usuario
+    new Claim(JwtRegisteredClaimNames.Email, user.Email),
+    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()) // Identificador único
+};
                 var token = new JwtSecurityToken(
                     issuer: _configuration["Jwt:Issuer"],
                     audience: _configuration["Jwt:Audience"],
@@ -259,7 +262,7 @@ namespace GanadoProBackEnd.Controllers
             public string Email { get; set; } = null!;
             public string Upp { get; set; } = null!;
             public string Telefono { get; set; } = null!;
-            public string Rol { get; set; } = null!;
+        
         }
 
         public class LoginDto

@@ -8,6 +8,7 @@ namespace GanadoProBackEnd.Controllers
 {
     [Route("api/[controller]")]
     [ApiController]
+    [Authorize]
     public class LotesController : ControllerBase
     {
         private readonly MyDbContext _context;
@@ -19,7 +20,7 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: api/Lotes
         [HttpGet]
-        [Authorize]
+     
         public async Task<ActionResult<IEnumerable<Lote>>> GetLotes()
         {
             return await _context.Lotes
@@ -32,7 +33,7 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: api/Lotes/5
         [HttpGet("{id}")]
-        [Authorize]
+    
         public async Task<ActionResult<Lote>> GetLote(int id)
         {
             var lote = await _context.Lotes
@@ -50,7 +51,7 @@ namespace GanadoProBackEnd.Controllers
 
         // POST: api/Lotes
         [HttpPost]
-        [Authorize]
+     
         public async Task<ActionResult<Lote>> CreateLote([FromBody] Lote lote)
         {
             // Validación extra
@@ -71,7 +72,8 @@ namespace GanadoProBackEnd.Controllers
 
         // PUT: api/Lotes/5
         [HttpPut("{id}")]
-        [Authorize]
+      
+
         public async Task<IActionResult> UpdateLote(int id, Lote updatedLote)
         {
             if (id != updatedLote.Id_Lote)
@@ -95,7 +97,7 @@ namespace GanadoProBackEnd.Controllers
 
         // DELETE: api/Lotes/5
         [HttpDelete("{id}")]
-        [Authorize]
+ 
         public async Task<IActionResult> DeleteLote(int id)
         {
             var lote = await _context.Lotes.FindAsync(id);

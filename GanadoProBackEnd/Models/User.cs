@@ -15,6 +15,7 @@ namespace GanadoProBackEnd.Models
         [DataType(DataType.Password)]
         public string Password { get; set; }
         public string Upp { get; set; }
+   
 
         public ICollection<Rancho> Ranchos { get; set; }
         public ICollection<Lote> Lotes { get; set; }
