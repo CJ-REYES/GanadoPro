@@ -1,8 +1,13 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading.Tasks;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using GanadoProBackEnd.Models;
 using Microsoft.AspNetCore.Authorization;
 using GanadoProBackEnd.Data;
+using System.ComponentModel.DataAnnotations;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -18,76 +23,117 @@ namespace GanadoProBackEnd.Controllers
             _context = context;
         }
 
-        // GET: api/Lotes
+        // GET: Todos los lotes
         [HttpGet]
-     
-        public async Task<ActionResult<IEnumerable<Lote>>> GetLotes()
+        public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes()
         {
-            return await _context.Lotes
-                .Include(l => l.Rancho)
+            var lotes = await _context.Lotes
                 .Include(l => l.User)
                 .Include(l => l.Cliente)
                 .Include(l => l.Animales)
+                .Include(l => l.Rancho)
                 .ToListAsync();
+
+            return lotes.Select(l => MapLoteToDto(l)).ToList();
         }
 
-        // GET: api/Lotes/5
+        // GET: Lote por ID
         [HttpGet("{id}")]
-    
-        public async Task<ActionResult<Lote>> GetLote(int id)
+        public async Task<ActionResult<LoteResponseDto>> GetLote(int id)
         {
             var lote = await _context.Lotes
-                .Include(l => l.Rancho)
                 .Include(l => l.User)
                 .Include(l => l.Cliente)
                 .Include(l => l.Animales)
+                .Include(l => l.Rancho)
                 .FirstOrDefaultAsync(l => l.Id_Lote == id);
 
             if (lote == null)
                 return NotFound();
 
-            return lote;
+            // Actualizar estado si es necesario
+            var nuevoEstado = CalcularEstado(lote.Estado, lote.Fecha_Salida);
+            if (nuevoEstado != lote.Estado)
+            {
+                lote.Estado = nuevoEstado;
+                _context.Entry(lote).State = EntityState.Modified;
+                await _context.SaveChangesAsync();
+            }
+
+            return MapLoteToDto(lote);
         }
 
-        // POST: api/Lotes
+        // POST: Crear nuevo lote
         [HttpPost]
-     
-        public async Task<ActionResult<Lote>> CreateLote([FromBody] Lote lote)
+        public async Task<ActionResult<LoteResponseDto>> CreateLote([FromBody] CreateLoteDto loteDto)
         {
-            // Validación extra
+            // Validar rancho
             var rancho = await _context.Ranchos.Include(r => r.User)
-                                               .FirstOrDefaultAsync(r => r.Id_Rancho == lote.Id_Rancho);
+                                               .FirstOrDefaultAsync(r => r.Id_Rancho == loteDto.Id_Rancho);
             if (rancho == null)
                 return BadRequest("El rancho no existe");
 
-            lote.Estado = "Disponible";
-            lote.Fecha_Creacion = DateTime.Now;
-            lote.Id_User = rancho.Id_User; // Asegura asignación del propietario del rancho
+            // Calcular estado automáticamente
+            string estado;
+            if (loteDto.Fecha_Salida.HasValue)
+            {
+                estado = loteDto.Fecha_Salida.Value.Date <= DateTime.Today ? 
+                    "Vendido" : "En proceso de venta";
+            }
+            else
+            {
+                estado = "Disponible";
+            }
+
+            var lote = new Lote
+            {
+                Id_User = rancho.Id_User, // Propietario del rancho
+                Remo = loteDto.Remo,
+                Fecha_Entrada = loteDto.Fecha_Entrada,
+                Fecha_Salida = loteDto.Fecha_Salida,
+                Observaciones = loteDto.Observaciones,
+                Id_Cliente = loteDto.Id_Cliente,
+                Estado = estado,
+                Fecha_Creacion = DateTime.Now,
+                Id_Rancho = loteDto.Id_Rancho,
+                User = rancho.User, // Asignar el usuario propietario del rancho
+                Animales = new List<Animal>() // Inicializar la lista de animales vacía
+            };
 
             _context.Lotes.Add(lote);
             await _context.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetLote), new { id = lote.Id_Lote }, lote);
+            return CreatedAtAction(nameof(GetLote), new { id = lote.Id_Lote }, MapLoteToDto(lote));
         }
 
-        // PUT: api/Lotes/5
+        // PUT: Actualizar lote existente
         [HttpPut("{id}")]
-      
-
-        public async Task<IActionResult> UpdateLote(int id, Lote updatedLote)
+        public async Task<IActionResult> UpdateLote(int id, [FromBody] UpdateLoteDto updateDto)
         {
-            if (id != updatedLote.Id_Lote)
+            if (id != updateDto.Id_Lote)
                 return BadRequest("ID no coincide");
 
             var existingLote = await _context.Lotes.FindAsync(id);
             if (existingLote == null)
                 return NotFound();
 
-            existingLote.Remo = updatedLote.Remo;
-            existingLote.Fecha_Entrada = updatedLote.Fecha_Entrada;
-            existingLote.Fecha_Salida = updatedLote.Fecha_Salida;
-            existingLote.Observaciones = updatedLote.Observaciones;
-            existingLote.Estado = updatedLote.Estado;
+            // Capturar cambios en la fecha de salida
+            var fechaSalidaCambiada = existingLote.Fecha_Salida != updateDto.Fecha_Salida;
+
+            existingLote.Remo = updateDto.Remo;
+            existingLote.Fecha_Entrada = updateDto.Fecha_Entrada;
+            existingLote.Fecha_Salida = updateDto.Fecha_Salida;
+            existingLote.Observaciones = updateDto.Observaciones;
+            existingLote.Id_Cliente = updateDto.Id_Cliente;
+
+            // Actualizar estado si cambió la fecha de salida
+            if (fechaSalidaCambiada)
+            {
+                existingLote.Estado = updateDto.Fecha_Salida.HasValue ?
+                    (updateDto.Fecha_Salida.Value.Date <= DateTime.Today ? 
+                        "Vendido" : "En proceso de venta") :
+                    "Disponible";
+            }
 
             _context.Entry(existingLote).State = EntityState.Modified;
             await _context.SaveChangesAsync();
@@ -95,9 +141,8 @@ namespace GanadoProBackEnd.Controllers
             return NoContent();
         }
 
-        // DELETE: api/Lotes/5
+        // DELETE: Eliminar lote
         [HttpDelete("{id}")]
- 
         public async Task<IActionResult> DeleteLote(int id)
         {
             var lote = await _context.Lotes.FindAsync(id);
@@ -108,6 +153,128 @@ namespace GanadoProBackEnd.Controllers
             await _context.SaveChangesAsync();
 
             return NoContent();
+        }
+
+        // Método auxiliar para calcular el estado actual
+        private static string CalcularEstado(string estadoActual, DateTime? fechaSalida)
+        {
+            // Si ya está vendido, mantener estado
+            if (estadoActual == "Vendido") 
+                return estadoActual;
+            
+            // Si no tiene fecha de salida, debe estar disponible
+            if (!fechaSalida.HasValue) 
+                return "Disponible";
+            
+            // Si la fecha de salida es hoy o anterior, está vendido
+            if (fechaSalida.Value.Date <= DateTime.Today)
+                return "Vendido";
+            
+            // Si tiene fecha futura y no es vendido, está en proceso
+            return "En proceso de venta";
+        }
+
+        // Mapear Lote a DTO de respuesta
+        private LoteResponseDto MapLoteToDto(Lote lote)
+        {
+            return new LoteResponseDto
+            {
+                Id_Lote = lote.Id_Lote,
+                Id_User = lote.Id_User,
+                Remo = lote.Remo,
+                Fecha_Entrada = lote.Fecha_Entrada,
+                Fecha_Creacion = lote.Fecha_Creacion,
+                Fecha_Salida = lote.Fecha_Salida,
+                Estado = lote.Estado,
+                Observaciones = lote.Observaciones,
+                Id_Cliente = lote.Id_Cliente,
+                Id_Rancho = lote.Id_Rancho,
+                User = lote.User != null ? new UserDto 
+                {
+                    Id_User = lote.User.Id_User,
+                    Nombre = lote.User.Name
+                } : null,
+                Cliente = lote.Cliente != null ? new ClienteDto 
+                {
+                    Id_Cliente = lote.Cliente.Id_Cliente,
+                    Nombre = lote.Cliente.Propietario
+                } : null,
+                Animales = lote.Animales?.Select(a => new AnimalSimpleDto
+                {
+                    Id_Animal = a.Id_Animal,
+                    Arete = a.Arete
+                }).ToList(),
+                Rancho = lote.Rancho != null ? new RanchoDto
+                {
+                    Id_Rancho = lote.Rancho.Id_Rancho,
+                    Nombre = lote.Rancho.NombreRancho
+                } : null
+            };
+        }
+
+        // DTOs
+        public class CreateLoteDto
+        {
+            [Required(ErrorMessage = "El Remo es obligatorio")]
+            public int Remo { get; set; }
+            public DateTime Fecha_Entrada { get; set; }
+            public DateTime? Fecha_Salida { get; set; }
+            public string? Observaciones { get; set; }
+            public int? Id_Cliente { get; set; }
+            [Required]
+            public int Id_Rancho { get; set; }
+        }
+
+        public class UpdateLoteDto
+        {
+            public int Id_Lote { get; set; }
+            public int Remo { get; set; }
+            public DateTime Fecha_Entrada { get; set; }
+            public DateTime? Fecha_Salida { get; set; }
+            public string? Observaciones { get; set; }
+            public int? Id_Cliente { get; set; }
+        }
+
+        public class LoteResponseDto
+        {
+            public int Id_Lote { get; set; }
+            public int Id_User { get; set; }
+            public int Remo { get; set; }
+            public DateTime Fecha_Entrada { get; set; }
+            public DateTime Fecha_Creacion { get; set; }
+            public DateTime? Fecha_Salida { get; set; }
+            public string Estado { get; set; }
+            public string? Observaciones { get; set; }
+            public int? Id_Cliente { get; set; }
+            public int? Id_Rancho { get; set; }
+            public UserDto User { get; set; }
+            public ClienteDto Cliente { get; set; }
+            public List<AnimalSimpleDto> Animales { get; set; }
+            public RanchoDto Rancho { get; set; }
+        }
+
+        public class UserDto
+        {
+            public int Id_User { get; set; }
+            public string Nombre { get; set; }
+        }
+
+        public class ClienteDto
+        {
+            public int Id_Cliente { get; set; }
+            public string Nombre { get; set; }
+        }
+
+        public class AnimalSimpleDto
+        {
+            public int Id_Animal { get; set; }
+            public string Arete { get; set; }
+        }
+
+        public class RanchoDto
+        {
+            public int Id_Rancho { get; set; }
+            public string Nombre { get; set; }
         }
     }
 }
