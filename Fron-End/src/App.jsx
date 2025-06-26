@@ -26,7 +26,7 @@ function App() {
         <Route 
           path="/layout" 
           element={
-            <ProtectedRoute allowedRoles={['Admin', 'Business', 'User']}>
+            <ProtectedRoute>
               <Layout />
             </ProtectedRoute>
           }
@@ -36,77 +36,14 @@ function App() {
             element={<Navigate to="/layout/dashboard" replace />} 
           />
           
-          <Route 
-            path="dashboard" 
-            element={
-              <ProtectedRoute allowedRoles={['Admin', 'Business', 'User']}>
-                <DashboardPage />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="ganado" 
-            element={
-              <ProtectedRoute allowedRoles={['Admin', 'Business']}>
-                <GanadoPage />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="Lotes" 
-            element={
-              <ProtectedRoute allowedRoles={['Admin', 'Business','User']}>
-                <LotesPage />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="Ranchos" 
-            element={
-              <ProtectedRoute allowedRoles={['Admin', 'Business', 'User']}>
-                <RanchoPage />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="ordenes-venta" 
-            element={
-              <ProtectedRoute allowedRoles={['Admin', 'Business']}>
-                <OrdenesVentaPage />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="compradores" 
-            element={
-              <ProtectedRoute allowedRoles={['Admin', 'Business']}>
-                <CompradoresPage />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="productores" 
-            element={
-              <ProtectedRoute allowedRoles={['Admin', 'Business']}>
-                <ProductoresPage />
-              </ProtectedRoute>
-            } 
-          />
-          
-          <Route 
-            path="exportacion" 
-            element={
-              <ProtectedRoute allowedRoles={['Admin', 'Business']}>
-                <ExportacionPage />
-              </ProtectedRoute>
-            } 
-          />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="ganado" element={<GanadoPage />} />
+          <Route path="Lotes" element={<LotesPage />} />
+          <Route path="Ranchos" element={<RanchoPage />} />
+          <Route path="ordenes-venta" element={<OrdenesVentaPage />} />
+          <Route path="compradores" element={<CompradoresPage />} />
+          <Route path="productores" element={<ProductoresPage />} />
+          <Route path="exportacion" element={<ExportacionPage />} />
         </Route>
         
         <Route path="*" element={<Navigate to="/" replace />} />

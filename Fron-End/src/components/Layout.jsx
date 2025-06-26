@@ -24,41 +24,23 @@ const Layout = () => {
   const [isLoading, setIsLoading] = useState(true);
   const location = useLocation();
 
-  // Definir navItems basados en el rol del usuario
-  const navItemsByRole = {
-    Admin: [
-      { to: '/layout/dashboard', label: 'Panel Principal', icon: LayoutDashboard },
-      { to: '/layout/ganado', label: 'Ganado', icon: Package },
-      { to: '/layout/Ranchos', label: 'Ranchos', icon: FileText },
-      { to: '/layout/Lotes', label: 'Lotes', icon: FileText },
-      { to: '/layout/ordenes-venta', label: 'Órdenes de Venta', icon: DollarSign },
-      { to: '/layout/compradores', label: 'Compradores', icon: Users },
-      { to: '/layout/productores', label: 'Productores', icon: Users },
-      { to: '/layout/exportacion', label: 'Inventario Exportación', icon: Truck },
-    ],
-    Business: [
-      { to: '/layout/dashboard', label: 'Panel Principal', icon: LayoutDashboard },
-      { to: '/layout/ganado', label: 'Ganado', icon: Package },
-      { to: '/layout/Ranchos', label: 'Ranchos', icon: FileText },
-      { to: '/layout/Lotes', label: 'Lotes', icon: FileText },
-      { to: '/layout/exportacion', label: 'Inventario Exportación', icon: Truck },
-    ],
-    User: [
-      { to: '/layout/dashboard', label: 'Panel Principal', icon: LayoutDashboard },
-      { to: '/layout/ganado', label: 'Ganado', icon: Package },
-      { to: '/layout/Ranchos', label: 'Ranchos', icon: FileText },
-      { to: '/layout/Lotes', label: 'Lotes', icon: FileText },
-    ],
-  };
-
-  // Obtener navItems según el rol
-  const navItems = user?.rol ? navItemsByRole[user.rol] || [] : [];
+  // TODOS los usuarios ven el mismo menú completo
+  const navItems = [
+    { to: '/layout/dashboard', label: 'Panel Principal', icon: LayoutDashboard },
+    { to: '/layout/ganado', label: 'Ganado', icon: Package },
+    { to: '/layout/Ranchos', label: 'Ranchos', icon: FileText },
+    { to: '/layout/Lotes', label: 'Lotes', icon: FileText },
+    { to: '/layout/ordenes-venta', label: 'Órdenes de Venta', icon: DollarSign },
+    { to: '/layout/compradores', label: 'Compradores', icon: Users },
+    { to: '/layout/productores', label: 'Productores', icon: Users },
+    { to: '/layout/exportacion', label: 'Inventario Exportación', icon: Truck },
+  ];
 
   useEffect(() => {
     const root = window.document.documentElement;
     if (isDarkMode) {
       root.classList.add('dark');
-       root.style.setProperty('--background', '224 71.4% 4.1%');
+      root.style.setProperty('--background', '224 71.4% 4.1%');
       root.style.setProperty('--foreground', '210 20% 98%');
       root.style.setProperty('--muted', '215 27.9% 16.9%');
       root.style.setProperty('--muted-foreground', '217.2 32.6% 50.0%');
@@ -77,7 +59,6 @@ const Layout = () => {
       root.style.setProperty('--destructive', '0 62.8% 30.6%');
       root.style.setProperty('--destructive-foreground', '210 20% 98%');
       root.style.setProperty('--ring', '150 70% 50%');
-      // ... (existing dark mode styles)
     } else {
       root.classList.remove('dark');
       root.style.setProperty('--background', '0 0% 100%'); 
@@ -99,7 +80,6 @@ const Layout = () => {
       root.style.setProperty('--destructive', '0 84.2% 60.2%'); 
       root.style.setProperty('--destructive-foreground', '210 40% 98%'); 
       root.style.setProperty('--ring', '150 60% 45%'); 
-      // ... (existing light mode styles)
     }
     
     const timer = setTimeout(() => {
@@ -116,7 +96,7 @@ const Layout = () => {
   const handleLogout = () => {
     const success = logout();
     if (success) {
-      // Clear all user-specific data
+      // Limpiar datos específicos del usuario
       const keys = Object.keys(localStorage);
       keys.forEach(key => {
         if (key.startsWith('user_') || key.startsWith('app_')) {
@@ -124,7 +104,7 @@ const Layout = () => {
         }
       });
       
-      // Redirect to login
+      // Redirigir a login
       window.location.href = '/login';
     }
   };
@@ -215,9 +195,6 @@ const Layout = () => {
                     </p>
                     <p className="text-xs leading-none text-muted-foreground">
                       {user?.email || 'usuario@ejemplo.com'}
-                    </p>
-                    <p className="text-xs leading-none text-primary font-bold">
-                      {user?.rol || 'Rol no asignado'}
                     </p>
                   </div>
                 </DropdownMenuLabel>
