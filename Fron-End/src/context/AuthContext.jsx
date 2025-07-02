@@ -1,40 +1,43 @@
-// src/context/AuthContext.jsx
+// AuthContext.jsx corregido
 import { createContext, useContext, useState, useEffect } from 'react';
-import { getToken, getUser, clearToken, clearUser } from '@/hooks/useToken';
 
 const AuthContext = createContext();
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
+  const [token, setToken] = useState(null); // Estado para el token
   const [loading, setLoading] = useState(true);
   
+  // Obtener token de localStorage
+  const getStoredToken = () => localStorage.getItem('token');
+  const getStoredUser = () => {
+    const userData = localStorage.getItem('user');
+    return userData ? JSON.parse(userData) : null;
+  };
+
   useEffect(() => {
-    const storedUser = getUser();
-    const storedToken = getToken();
+    const storedUser = getStoredUser();
+    const storedToken = getStoredToken();
     
     if (storedUser && storedToken) {
-      try {
-        setUser(storedUser);
-      } catch (error) {
-        console.error("Error al obtener usuario de localStorage:", error);
-        clearAuthData();
-      }
+      setUser(storedUser);
+      setToken(storedToken); // Establecer token en estado
     }
     setLoading(false);
   }, []);
 
-  // Función centralizada para limpiar datos de autenticación
   const clearAuthData = () => {
-    clearToken();
-    clearUser();
+    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
+    setToken(null); // Limpiar token
   };
 
-  const login = (token, userData) => {
+  const login = (newToken, userData) => {
     setUser(userData);
-    // Guardar en localStorage
+    setToken(newToken); // Guardar token en estado
     localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('token', token);
+    localStorage.setItem('token', newToken);
   };
 
   const logout = () => {
@@ -45,10 +48,11 @@ export const AuthProvider = ({ children }) => {
   return (
     <AuthContext.Provider value={{ 
       user, 
+      token, // Exponer token
       login, 
       logout, 
       loading,
-      isAuthenticated: !!user
+      isAuthenticated: !!token // Verificar por token
     }}>
       {children}
     </AuthContext.Provider>

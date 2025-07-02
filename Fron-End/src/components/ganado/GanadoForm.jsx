@@ -5,8 +5,10 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+import { useAuth } from '@/context/AuthContext';
 
-const GanadoForm = ({ animal, onSuccess, onCancel }) => {
+const GanadoForm = ({ animal, ranchos, onSuccess, onCancel }) => {
+  const { token } = useAuth();
   const [formData, setFormData] = React.useState(
     animal || { 
       idRancho: '',
@@ -15,10 +17,11 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
       sexo: 'Macho', 
       edad: '', 
       peso: '', 
-      lote: '', 
-      estado: 'Saludable', 
-      fechaCompra: new Date().toISOString().split('T')[0], 
-      notas: '' 
+      idLote: '', 
+      clasificacion: 'Saludable', 
+      estado: 'EnStock',
+      fechaIngreso: new Date().toISOString().split('T')[0], 
+      observaciones: '' 
     }
   );
   const [isSubmitting, setIsSubmitting] = React.useState(false);
@@ -33,58 +36,70 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const getAuthHeaders = () => {
+    return {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`
+    };
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
       // Validación de todos los campos requeridos
-      const camposRequeridos = [
-        { nombre: 'idRancho', mensaje: 'El ID del rancho es requerido' },
-        { nombre: 'arete', mensaje: 'El número de arete es requerido' },
-        { nombre: 'raza', mensaje: 'La raza es requerida' },
-        { nombre: 'sexo', mensaje: 'El sexo es requerido' },
-        { nombre: 'fechaCompra', mensaje: 'La fecha de compra es requerida' }
-      ];
+      if (!formData.idRancho) throw new Error('El rancho es requerido');
+      if (!formData.arete) throw new Error('El número de arete es requerido');
+      if (!formData.raza) throw new Error('La raza es requerida');
+      if (!formData.sexo) throw new Error('El sexo es requerido');
+      if (!formData.fechaIngreso) throw new Error('La fecha de ingreso es requerida');
 
-      for (const campo of camposRequeridos) {
-        if (!formData[campo.nombre]) {
-          throw new Error(campo.mensaje);
-        }
-      }
+      const method = animal ? 'PUT' : 'POST';
+      const url = animal 
+        ? `http://localhost:5201/api/Animales/${animal.id}`
+        : 'http://localhost:5201/api/Animales';
 
-      // Preparar el payload
+      // Preparar el payload según el DTO del backend
       const payload = {
         Arete: formData.arete,
         Raza: formData.raza,
         Sexo: formData.sexo,
         Peso: formData.peso ? Number(formData.peso) : null,
-        Clasificacion: formData.estado,
-        Categoria: formData.edad || null,
-        Origen: formData.notas || null,
-        FechaCompra: formData.fechaCompra,
+        Clasificacion: formData.clasificacion,
+        Edad_Meses: formData.edad ? Number(formData.edad) : 0,
+        Observaciones: formData.observaciones || null,
+        FechaIngreso: formData.fechaIngreso,
         Id_Rancho: Number(formData.idRancho),
-        Id_Lote: formData.id_Lote ? Number(formData.id_Lote) : null
+        Id_Lote: formData.idLote ? Number(formData.idLote) : null,
+        Estado: formData.estado || "EnStock"
       };
 
-      const response = await fetch('http://localhost:5201/api/Animales', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+      const response = await fetch(url, {
+        method,
+        headers: getAuthHeaders(),
         body: JSON.stringify(payload)
       });
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(errorData.title || errorData.message || 'Error al registrar el animal');
+        let errorMessage = 'Error al registrar el animal';
+        
+        // Manejar error de arete duplicado
+        if (errorData.Field === 'Arete') {
+          errorMessage = errorData.Message;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       const data = await response.json();
       
       toast({
         title: "Éxito",
-        description: "Animal registrado correctamente",
+        description: animal 
+          ? "Animal actualizado correctamente" 
+          : "Animal registrado correctamente",
       });
       
       if (onSuccess) {
@@ -104,15 +119,23 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div>
-        <Label htmlFor="idRancho">ID del Rancho*</Label>
-        <Input 
-          id="idRancho" 
-          name="idRancho" 
-          type="number"
+        <Label htmlFor="idRancho">Rancho*</Label>
+        <Select 
           value={formData.idRancho} 
-          onChange={handleChange} 
+          onValueChange={(value) => handleSelectChange('idRancho', value)}
           required
-        />
+        >
+          <SelectTrigger className="w-full">
+            <SelectValue placeholder="Seleccionar rancho" />
+          </SelectTrigger>
+          <SelectContent>
+            {ranchos.map(rancho => (
+              <SelectItem key={rancho.id_Rancho} value={rancho.id_Rancho.toString()}>
+                {rancho.nombreRancho}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
 
       <div>
@@ -142,6 +165,7 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
           <Select 
             value={formData.sexo} 
             onValueChange={(value) => handleSelectChange('sexo', value)}
+            required
           >
             <SelectTrigger className="w-full">
               <SelectValue placeholder="Seleccionar sexo" />
@@ -161,6 +185,7 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
             id="edad" 
             name="edad" 
             type="number"
+            min="0"
             value={formData.edad} 
             onChange={handleChange} 
           />
@@ -172,6 +197,7 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
             name="peso" 
             type="number"
             step="0.1"
+            min="0"
             value={formData.peso} 
             onChange={handleChange} 
           />
@@ -180,23 +206,24 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="lote">Lote</Label>
+          <Label htmlFor="idLote">ID de Lote</Label>
           <Input 
-            id="lote" 
-            name="lote" 
+            id="idLote" 
+            name="idLote" 
             type="number"
-            value={formData.corral} 
+            min="0"
+            value={formData.idLote} 
             onChange={handleChange} 
           />
         </div>
         <div>
-          <Label htmlFor="estado">Estado</Label>
+          <Label htmlFor="clasificacion">Clasificación</Label>
           <Select 
-            value={formData.estado} 
-            onValueChange={(value) => handleSelectChange('estado', value)}
+            value={formData.clasificacion} 
+            onValueChange={(value) => handleSelectChange('clasificacion', value)}
           >
             <SelectTrigger className="w-full">
-              <SelectValue placeholder="Seleccionar estado" />
+              <SelectValue placeholder="Seleccionar clasificación" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="Saludable">Saludable</SelectItem>
@@ -210,23 +237,23 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
       </div>
       
       <div>
-        <Label htmlFor="fechaCompra">Fecha de Compra/Registro*</Label>
+        <Label htmlFor="fechaIngreso">Fecha de Ingreso*</Label>
         <Input 
-          id="fechaCompra" 
-          name="fechaCompra" 
+          id="fechaIngreso" 
+          name="fechaIngreso" 
           type="date" 
-          value={formData.fechaCompra} 
+          value={formData.fechaIngreso} 
           onChange={handleChange} 
           required 
         />
       </div>
       
       <div>
-        <Label htmlFor="notas">Notas/Origen</Label>
+        <Label htmlFor="observaciones">Observaciones</Label>
         <Input 
-          id="notas" 
-          name="notas" 
-          value={formData.notas} 
+          id="observaciones" 
+          name="observaciones" 
+          value={formData.observaciones} 
           onChange={handleChange} 
         />
       </div>
@@ -238,7 +265,7 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
           </Button>
         </DialogClose>
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Procesando...' : 'Registrar Animal'}
+          {isSubmitting ? 'Procesando...' : (animal ? 'Actualizar Animal' : 'Registrar Animal')}
         </Button>
       </DialogFooter>
     </form>

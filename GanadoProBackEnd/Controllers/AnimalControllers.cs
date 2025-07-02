@@ -108,6 +108,18 @@ namespace GanadoProBackEnd.Controllers
 
                 idCliente = cliente.Id_Cliente;
             }
+            // Verificar arete único (nueva validación)
+    bool areteExiste = await _context.Animales
+        .AnyAsync(a => a.Arete == animalDto.Arete);
+    
+    if (areteExiste)
+    {
+        return BadRequest(new 
+        { 
+            Message = "El arete ya está registrado en otro animal", 
+            Field = "Arete" 
+        });
+    }
 
             // Validar lote si se proporciona
             if (animalDto.Id_Lote.HasValue && animalDto.Id_Lote.Value > 0)
@@ -136,7 +148,6 @@ namespace GanadoProBackEnd.Controllers
                 UppOrigen = animalDto.UppOrigen,
                 UppDestino = animalDto.UppDestino,
                 FechaIngreso = animalDto.FechaIngreso ?? DateTime.Now,
-                FechaSalida = animalDto.FechaSalida,
                 MotivoSalida = animalDto.MotivoSalida,
                 Observaciones = animalDto.Observaciones,
                 CertificadoZootanitario = animalDto.CertificadoZootanitario,
@@ -355,7 +366,6 @@ namespace GanadoProBackEnd.Controllers
             public string? UppOrigen { get; set; }
             public string? UppDestino { get; set; }
             public DateTime? FechaIngreso { get; set; }
-            public DateTime? FechaSalida { get; set; }
             public string? MotivoSalida { get; set; }
             public string? Observaciones { get; set; }
             public string? CertificadoZootanitario { get; set; }

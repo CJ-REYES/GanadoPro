@@ -65,46 +65,57 @@ namespace GanadoProBackEnd.Controllers
 
         // POST: Crear nuevo lote
         [HttpPost]
-        public async Task<ActionResult<LoteResponseDto>> CreateLote([FromBody] CreateLoteDto loteDto)
-        {
-            // Validar rancho
-            var rancho = await _context.Ranchos.Include(r => r.User)
-                                               .FirstOrDefaultAsync(r => r.Id_Rancho == loteDto.Id_Rancho);
-            if (rancho == null)
-                return BadRequest("El rancho no existe");
+public async Task<ActionResult<LoteResponseDto>> CreateLote([FromBody] CreateLoteDto loteDto)
+{
+    // Validar rancho
+    var rancho = await _context.Ranchos
+        .Include(r => r.User)
+        .FirstOrDefaultAsync(r => r.Id_Rancho == loteDto.Id_Rancho);
+        
+    if (rancho == null)
+        return BadRequest("El rancho no existe");
 
-            // Calcular estado automáticamente
-            string estado;
-            if (loteDto.Fecha_Salida.HasValue)
-            {
-                estado = loteDto.Fecha_Salida.Value.Date <= DateTime.Today ? 
-                    "Vendido" : "En proceso de venta";
-            }
-            else
-            {
-                estado = "Disponible";
-            }
+    // Verificar si ya existe un remo idéntico
+    bool remoExistente = await _context.Lotes
+        .AnyAsync(l => l.Remo == loteDto.Remo);
+        
+    if (remoExistente)
+    {
+        return Conflict("Ya existe un lote con el mismo remo en la base de datos");
+    }
 
-            var lote = new Lote
-            {
-                Id_User = rancho.Id_User, // Propietario del rancho
-                Remo = loteDto.Remo,
-                Fecha_Entrada = loteDto.Fecha_Entrada,
-                Fecha_Salida = loteDto.Fecha_Salida,
-                Observaciones = loteDto.Observaciones,
-                Id_Cliente = loteDto.Id_Cliente,
-                Estado = estado,
-                Fecha_Creacion = DateTime.Now,
-                Id_Rancho = loteDto.Id_Rancho,
-                User = rancho.User, // Asignar el usuario propietario del rancho
-                Animales = new List<Animal>() // Inicializar la lista de animales vacía
-            };
+    // Calcular estado automáticamente
+    string estado;
+    if (loteDto.Fecha_Salida.HasValue)
+    {
+        estado = loteDto.Fecha_Salida.Value.Date <= DateTime.Today ? 
+            "Vendido" : "En proceso de venta";
+    }
+    else
+    {
+        estado = "Disponible";
+    }
 
-            _context.Lotes.Add(lote);
-            await _context.SaveChangesAsync();
+    var lote = new Lote
+    {
+        Id_User = rancho.Id_User, // Propietario del rancho
+        Remo = loteDto.Remo,
+        Fecha_Entrada = loteDto.Fecha_Entrada,
+        Fecha_Salida = loteDto.Fecha_Salida,
+        Observaciones = loteDto.Observaciones,
+        Id_Cliente = loteDto.Id_Cliente,
+        Estado = estado,
+        Fecha_Creacion = DateTime.Now,
+        Id_Rancho = loteDto.Id_Rancho,
+        User = rancho.User, // Asignar el usuario propietario del rancho
+        Animales = new List<Animal>() // Inicializar la lista de animales vacía
+    };
 
-            return CreatedAtAction(nameof(GetLote), new { id = lote.Id_Lote }, MapLoteToDto(lote));
-        }
+    _context.Lotes.Add(lote);
+    await _context.SaveChangesAsync();
+
+    return CreatedAtAction(nameof(GetLote), new { id = lote.Id_Lote }, MapLoteToDto(lote));
+}
 
         // PUT: Actualizar lote existente
         [HttpPut("{id}")]

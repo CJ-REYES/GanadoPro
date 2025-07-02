@@ -17,6 +17,7 @@ namespace GanadoProBackEnd.Models
         public int Id_Productor { get; set; }
         public DateTime FechaSalida { get; set; }
         public string? FolioGuiaRemo { get; set; }
+        public string? UPP { get; set; }
         public string? Estado { get; set; } // "Programada", "Completada", "Cancelada"
         public TipoVenta TipoVenta { get; set; }
 
