@@ -63,7 +63,7 @@ const transformLote = (lote) => {
       arete: animal.Arete,
       // Agregar más campos si son necesarios
       sexo: animal.Sexo || 'N/A',
-      edad: animal.Edad || animal.edad_Meses || 0,
+      edad: animal.Edad_Meses || 0,  
       peso: animal.Peso || 0
     })) : [],
     rancho: lote.Rancho ? {

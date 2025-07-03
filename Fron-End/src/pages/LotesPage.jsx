@@ -183,7 +183,7 @@ const LoteAccordion = ({ lote, onEdit, onDelete }) => {
               <div>
                 <p className="text-sm text-muted-foreground">Fecha Creación</p>
                 <p className="font-medium">
-                  {lote.fechaCreacion ? lote.fechaCreacion.toLocaleDateString() : 'N/A'}
+                  {lote.fechaCreacion ? new Date(lote.fechaCreacion).toLocaleDateString() : 'N/A'}
                 </p>
               </div>
             </div>
