@@ -24,10 +24,11 @@ import {
 } from "@/components/ui/dialog";
 import { Separator } from '@/components/ui/separator';
 import { useToast } from "@/components/ui/use-toast";
-import { getToken, setToken, clearToken } from '@/hooks/useToken';
-
+import { getToken } from '@/hooks/useToken';
 import useLocalStorage from '@/hooks/useLocalStorage';
 import { cn } from '@/lib/utils';
+import * as loteService from '@/services/loteService';
+import * as ranchoService from '@/services/ranchoService';
 
 const LoteForm = ({ lote, ranchos, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState(
@@ -88,7 +89,7 @@ const LoteForm = ({ lote, ranchos, onSubmit, onCancel }) => {
           >
             <option value="Disponible">Disponible</option>
             <option value="Vendido">Vendido</option>
-            <option value="En Proceso">En Proceso</option>
+            <option value="En proceso de venta">En proceso de venta</option>
           </select>
         </div>
       )}
@@ -119,7 +120,7 @@ const LoteAccordion = ({ lote, onEdit, onDelete }) => {
     return cn(`px-2 py-1 text-xs rounded-full`,
       estado === 'Disponible' && 'bg-green-500/20 text-green-400',
       estado === 'Vendido' && 'bg-gray-500/20 text-gray-400',
-      estado === 'En Proceso' && 'bg-yellow-500/20 text-yellow-400'
+      estado === 'En proceso de venta' && 'bg-yellow-500/20 text-yellow-400'
     );
   };
 
@@ -173,22 +174,16 @@ const LoteAccordion = ({ lote, onEdit, onDelete }) => {
             <div className="grid grid-cols-2 gap-4 mb-4">
               <div>
                 <p className="text-sm text-muted-foreground">Rancho</p>
-                <p className="font-medium">{lote.nombreRancho}</p>
+                <p className="font-medium">{lote.rancho?.nombre || 'Sin rancho'}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Ubicación</p>
-                <p className="font-medium">{lote.comunidad}</p>
-              </div>
-              <div>
-                <p className="text-sm text-muted-foreground">Fecha Entrada</p>
-                <p className="font-medium">
-                  {lote.fechaEntrada ? new Date(lote.fechaEntrada).toLocaleDateString() : 'N/A'}
-                </p>
+                <p className="font-medium">{lote.rancho?.ubicacion || 'Sin ubicación'}</p>
               </div>
               <div>
                 <p className="text-sm text-muted-foreground">Fecha Creación</p>
                 <p className="font-medium">
-                  {lote.fechaCreacion ? new Date(lote.fechaCreacion).toLocaleDateString() : 'N/A'}
+                  {lote.fechaCreacion ? lote.fechaCreacion.toLocaleDateString() : 'N/A'}
                 </p>
               </div>
             </div>
@@ -211,18 +206,19 @@ const LoteAccordion = ({ lote, onEdit, onDelete }) => {
                   </thead>
                   <tbody>
                     {lote.animales.map(animal => (
-                      <tr key={animal.id} className="border-b hover:bg-muted/30">
-                        <td className="px-4 py-2">{animal.id}</td>
+                      <tr key={animal.id_Animal} className="border-b hover:bg-muted/30">
+                        <td className="px-4 py-2">{animal.id_Animal}</td>
                         <td className="px-4 py-2">{animal.arete}</td>
                         <td className="px-4 py-2">
                           <span className={cn(`px-2 py-1 text-xs rounded-full`,
-                            animal.sexo === 'Macho' ? 'bg-blue-500/20 text-blue-400' : 'bg-pink-500/20 text-pink-400'
+                            animal.sexo === 'Macho' ? 'bg-blue-500/20 text-blue-400' : 
+                            animal.sexo === 'Hembra' ? 'bg-pink-500/20 text-pink-400' : 'bg-gray-500/20 text-gray-400'
                           )}>
-                            {animal.sexo}
+                            {animal.sexo || 'N/A'}
                           </span>
                         </td>
-                        <td className="px-4 py-2">{animal.edad} meses</td>
-                        <td className="px-4 py-2">{animal.peso} kg</td>
+                        <td className="px-4 py-2">{animal.edad || 0} meses</td>
+                        <td className="px-4 py-2">{animal.peso || 0} kg</td>
                       </tr>
                     ))}
                   </tbody>
@@ -248,19 +244,15 @@ const LotesPage = () => {
   const [editingLote, setEditingLote] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   
-  const [token] = useToken();
+  const token = getToken();
   const [user] = useLocalStorage('user', null);
 
   // Obtener ranchos
   const fetchRanchos = async () => {
-    if (!token) return;
     try {
-      const response = await fetch('http://localhost:5201/api/Ranchos', {
-        headers: { 'Authorization': `Bearer ${token}`, "Content-Type": "application/json"}
-      });
-      if (!response.ok) throw new Error('Error al obtener ranchos');
-      const data = await response.json();
+      const data = await ranchoService.getRanchos();
       setRanchos(data);
     } catch (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -269,27 +261,13 @@ const LotesPage = () => {
 
   // Obtener lotes con animales
   const fetchLotes = async () => {
-    if (!token) return;
     try {
       setIsLoading(true);
-      const response = await fetch('http://localhost:5201/api/Lotes', {
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      if (!response.ok) throw new Error('Error al obtener lotes');
-      const data = await response.json();
-      
-      // Normalizar los datos para asegurar compatibilidad
-      const normalizedData = data.map(lote => ({
-        ...lote,
-        animales: lote.animales?.map(animal => ({
-          ...animal,
-          // Asegurar que tenemos la propiedad 'edad'
-          edad: animal.edad || animal.edad_Meses || 0
-        }))
-      }));
-      
-      setLotes(normalizedData);
+      setError(null);
+      const data = await loteService.getLotes();
+      setLotes(data);
     } catch (error) {
+      setError(error.message);
       toast({ title: "Error", description: error.message, variant: "destructive" });
     } finally {
       setIsLoading(false);
@@ -298,26 +276,13 @@ const LotesPage = () => {
 
   // Crear nuevo lote
   const handleCreateLote = async (newLote) => {
-    if (!token) return;
     try {
-      const response = await fetch('http://localhost:5201/api/Lotes', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          Id_Rancho: parseInt(newLote.id_rancho),
-          Remo: parseInt(newLote.remo)
-        })
+      const createdLote = await loteService.createLote({
+        id_rancho: parseInt(newLote.id_rancho),
+        remo: parseInt(newLote.remo)
       });
       
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al crear lote');
-      }
-      
-      await fetchLotes(); // Refrescar datos
+      setLotes([...lotes, createdLote]);
       
       toast({ title: "Éxito", description: "Lote creado correctamente" });
       setIsFormOpen(false);
@@ -328,22 +293,29 @@ const LotesPage = () => {
 
   // Actualizar lote
   const handleUpdateLote = async (updatedLote) => {
-    if (!token) return;
+    if (!updatedLote || !updatedLote.id_Lote) {
+      toast({ title: "Error", description: "ID de lote no válido", variant: "destructive" });
+      return;
+    }
+    
     try {
-      const response = await fetch(`http://localhost:5201/api/Lotes/${updatedLote.id_Lote}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          Estado: updatedLote.estado
-        })
-      });
+      // Preparar datos para enviar al backend
+      const updateData = {
+        Id_Lote: updatedLote.id_Lote,
+        Remo: parseInt(updatedLote.remo),
+        Estado: updatedLote.estado,
+        Fecha_Entrada: updatedLote.fechaEntrada ? updatedLote.fechaEntrada.toISOString() : null,
+        Fecha_Salida: updatedLote.fechaSalida ? updatedLote.fechaSalida.toISOString() : null,
+        Observaciones: updatedLote.observaciones || '',
+        Id_Cliente: updatedLote.id_Cliente || null
+      };
+
+      await loteService.updateLote(updatedLote.id_Lote, updateData);
       
-      if (!response.ok) throw new Error('Error al actualizar lote');
-      
-      await fetchLotes(); // Refrescar datos
+      // Actualizar estado local
+      setLotes(lotes.map(l => 
+        l.id_Lote === updatedLote.id_Lote ? { ...l, ...updatedLote } : l
+      ));
       
       toast({ title: "Éxito", description: "Lote actualizado correctamente" });
       setIsFormOpen(false);
@@ -355,19 +327,16 @@ const LotesPage = () => {
 
   // Eliminar lote
   const handleDeleteLote = async (loteId) => {
-    if (!token) return;
+    if (!loteId) {
+      toast({ title: "Error", description: "ID de lote no válido", variant: "destructive" });
+      return;
+    }
+    
     if (!window.confirm('¿Está seguro de que desea eliminar este lote?')) return;
     
     try {
-      const response = await fetch(`http://localhost:5201/api/Lotes/${loteId}`, {
-        method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` }
-      });
-      
-      if (!response.ok) throw new Error('Error al eliminar lote');
-      
-      await fetchLotes(); // Refrescar datos
-      
+      await loteService.deleteLote(loteId);
+      setLotes(lotes.filter(l => l.id_Lote !== loteId));
       toast({ title: "Éxito", description: "Lote eliminado correctamente" });
     } catch (error) {
       toast({ title: "Error", description: error.message, variant: "destructive" });
@@ -381,14 +350,33 @@ const LotesPage = () => {
     }
   }, [token]);
 
-  // CORRECCIÓN: Paréntesis faltantes en la función de filtrado
   const filteredLotes = lotes.filter(lote => 
     Object.values(lote).some(val => 
       String(val).toLowerCase().includes(searchTerm.toLowerCase())
     )
   );
 
-  const totalAnimales = lotes.reduce((sum, l) => sum + l.totalAnimales, 0);
+  const totalAnimales = lotes.reduce((sum, l) => sum + (l.totalAnimales || 0), 0);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen text-center p-4">
+        <div className="bg-destructive/20 p-6 rounded-lg max-w-md">
+          <h2 className="text-xl font-bold text-destructive mb-2">Error al cargar lotes</h2>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={fetchLotes}>Reintentar</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div 
@@ -450,7 +438,7 @@ const LotesPage = () => {
             <DropdownMenuContent className="w-56">
               <DropdownMenuLabel>Filtrar por Estado</DropdownMenuLabel>
               <DropdownMenuSeparator />
-              {['Disponible', 'Vendido', 'En Proceso'].map(estado => (
+              {['Disponible', 'Vendido', 'En proceso de venta'].map(estado => (
                 <DropdownMenuCheckboxItem 
                   key={estado} 
                   onCheckedChange={() => { /* Implementar lógica de filtrado si es necesario */ }}
@@ -477,7 +465,7 @@ const LotesPage = () => {
         <CardContent>
           {isLoading ? (
             <div className="flex justify-center items-center h-32">
-              <p>Cargando lotes...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-t-2 border-b-2 border-primary"></div>
             </div>
           ) : filteredLotes.length === 0 ? (
             <p className="text-center py-8 text-muted-foreground">
