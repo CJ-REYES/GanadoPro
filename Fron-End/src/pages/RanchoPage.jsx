@@ -12,13 +12,11 @@ import {
   DialogDescription,
   DialogFooter,
   DialogTrigger,
-  DialogClose,
 } from "@/components/ui/dialog";
 import RanchoForm from '@/components/Ranchos/RanchoForm';
-import { getToken, setToken, clearToken } from '@/hooks/useToken';
+import * as ranchoService from '@/services/ranchoService';
 
-
-// Hook useLocalStorage modificado para manejar objetos y cadenas
+// Hook useLocalStorage
 const useLocalStorage = (key, initialValue) => {
   const [storedValue, setStoredValue] = React.useState(() => {
     try {
@@ -55,7 +53,7 @@ const RanchoCard = ({ rancho, onEdit, onDelete, onView }) => {
           <div className="flex justify-between items-start">
             <div>
               <CardTitle className="text-xl text-foreground">{rancho.nombreRancho}</CardTitle>
-              <CardDescription className="text-xs">{rancho.ubicacion}</CardDescription>
+              <CardDescription className="text-xs">{rancho.ubicacion || 'Sin ubicación'}</CardDescription>
             </div>
             <span className="px-2 py-1 text-xs rounded-full bg-green-500/20 text-green-400">
               Activo
@@ -65,11 +63,11 @@ const RanchoCard = ({ rancho, onEdit, onDelete, onView }) => {
         <CardContent className="flex-grow space-y-3">
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Propietario:</span>
-            <span className="font-semibold text-foreground">{rancho.propietario}</span>
+            <span className="font-semibold text-foreground">{rancho.propietario || 'Sin propietario'}</span>
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Lotes:</span>
-            <span className="font-semibold text-foreground">{rancho.totalLotes}</span>
+            <span className="font-semibold text-foreground">{rancho.totalLotes || 0}</span>
           </div>
         </CardContent>
         <CardFooter className="gap-1">
@@ -95,59 +93,47 @@ const RanchosPage = () => {
   const [editingRancho, setEditingRancho] = useState(null);
   const [viewingRancho, setViewingRancho] = useState(null);
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
-  
-  // Usa el hook useToken para el token
-  const [token] = useToken();
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
   
   // Usa el hook useLocalStorage para el usuario
   const [user] = useLocalStorage('user', null);
-
+  
   // Obtener ranchos desde la API
   const fetchRanchos = async () => {
-    if (!token) return;
-    
+    setIsLoading(true);
+    setError(null);
     try {
-      const response = await fetch('http://localhost:5201/api/Ranchos', {
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) throw new Error('Error al obtener ranchos');
-      
-      const data = await response.json();
+      const data = await ranchoService.getRanchos();
       setRanchos(data);
     } catch (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      setError(error.message);
+      toast({ 
+        title: "Error", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    } finally {
+      setIsLoading(false);
     }
   };
 
   // Crear nuevo rancho
   const handleCreateRancho = async (newRancho) => {
-    if (!token || !user) {
-      toast({ title: "Error", description: "Falta token o información de usuario", variant: "destructive" });
+    if (!user || !user.id) {
+      toast({ 
+        title: "Error", 
+        description: "Información de usuario no disponible", 
+        variant: "destructive" 
+      });
       return;
     }
     
     try {
-      const response = await fetch('http://localhost:5201/api/Ranchos', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          ...newRancho,
-          Id_User: user.id
-        })
+      const createdRancho = await ranchoService.createRancho({
+        ...newRancho,
+        Id_User: user.id
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || 'Error al crear rancho');
-      }
-      
-      const createdRancho = await response.json();
       
       // Actualizar lista de ranchos
       setRanchos([...ranchos, createdRancho]);
@@ -155,72 +141,113 @@ const RanchosPage = () => {
       // Guardar ID del rancho en localStorage
       localStorage.setItem('currentRanchoId', createdRancho.id_Rancho);
       
-      toast({ title: "Éxito", description: "Rancho creado correctamente" });
+      toast({ 
+        title: "Éxito", 
+        description: "Rancho creado correctamente" 
+      });
       setIsFormOpen(false);
     } catch (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: error.message, 
+        variant: "destructive" 
+      });
     }
   };
 
   // Actualizar rancho existente
   const handleUpdateRancho = async (updatedRancho) => {
-    if (!token) return;
+    if (!updatedRancho || !updatedRancho.id_Rancho) {
+      toast({ 
+        title: "Error", 
+        description: "ID de rancho no válido", 
+        variant: "destructive" 
+      });
+      return;
+    }
     
     try {
-      const response = await fetch(`http://localhost:5201/api/Ranchos/${updatedRancho.id_Rancho}`, {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
+      await ranchoService.updateRancho(
+        updatedRancho.id_Rancho,
+        {
           NombreRancho: updatedRancho.nombreRancho,
           Ubicacion: updatedRancho.ubicacion
-        })
-      });
-      
-      if (!response.ok) throw new Error('Error al actualizar rancho');
+        }
+      );
       
       // Actualizar el estado local
       setRanchos(ranchos.map(r => 
-        r.id_Rancho === updatedRancho.id_Rancho ? {...r, ...updatedRancho} : r
+        r.id_Rancho === updatedRancho.id_Rancho ? { ...r, ...updatedRancho } : r
       ));
       
-      toast({ title: "Éxito", description: "Rancho actualizado correctamente" });
+      toast({ 
+        title: "Éxito", 
+        description: "Rancho actualizado correctamente" 
+      });
       setIsFormOpen(false);
       setEditingRancho(null);
     } catch (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: error.message, 
+        variant: "destructive" 
+      });
     }
   };
 
   // Eliminar rancho
   const handleDeleteRancho = async (ranchoId) => {
-    if (!token) return;
+    if (!ranchoId) {
+      toast({ 
+        title: "Error", 
+        description: "ID de rancho no válido", 
+        variant: "destructive" 
+      });
+      return;
+    }
     
     try {
-      const response = await fetch(`http://localhost:5201/api/Ranchos/${ranchoId}`, {
-        method: 'DELETE',
-        headers: {
-          'Authorization': `Bearer ${token}`
-        }
-      });
-      
-      if (!response.ok) throw new Error('Error al eliminar rancho');
-      
+      await ranchoService.deleteRancho(ranchoId);
       setRanchos(ranchos.filter(r => r.id_Rancho !== ranchoId));
-      toast({ title: "Éxito", description: "Rancho eliminado correctamente" });
+      toast({ 
+        title: "Éxito", 
+        description: "Rancho eliminado correctamente" 
+      });
     } catch (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+      toast({ 
+        title: "Error", 
+        description: error.message, 
+        variant: "destructive" 
+      });
     }
   };
 
   useEffect(() => {
     fetchRanchos();
-  }, [token]);
+  }, []);
 
   const totalRanchos = ranchos.length;
-  const totalLotes = ranchos.reduce((sum, r) => sum + r.totalLotes, 0);
+  const totalLotes = ranchos.reduce((sum, r) => sum + (r.totalLotes || 0), 0);
+
+  if (isLoading) {
+    return (
+      <div className="flex justify-center items-center h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen text-center p-4">
+        <div className="bg-destructive/20 p-6 rounded-lg max-w-md">
+          <h2 className="text-xl font-bold text-destructive mb-2">Error al cargar ranchos</h2>
+          <p className="text-muted-foreground mb-4">{error}</p>
+          <Button onClick={fetchRanchos}>Reintentar</Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <motion.div 
@@ -238,7 +265,6 @@ const RanchosPage = () => {
             <Button 
               className="bg-gradient-to-r from-primary to-green-400 hover:from-primary/90 hover:to-green-400/90 transition-all"
               onClick={() => setEditingRancho(null)}
-              disabled={!token}
             >
               <PlusCircle className="mr-2 h-4 w-4" /> Nuevo Rancho
             </Button>
@@ -285,23 +311,35 @@ const RanchosPage = () => {
         </div>
       </Card>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {ranchos.map((rancho) => (
-          <RanchoCard 
-            key={rancho.id_Rancho} 
-            rancho={rancho} 
-            onEdit={(r) => {
-              setEditingRancho(r);
-              setIsFormOpen(true);
-            }}
-            onDelete={handleDeleteRancho}
-            onView={(r) => {
-              setViewingRancho(r);
-              setIsViewDialogOpen(true);
-            }}
-          />
-        ))}
-      </div>
+      {ranchos.length === 0 ? (
+        <div className="text-center py-12">
+          <p className="text-muted-foreground">No hay ranchos registrados</p>
+          <Button 
+            className="mt-4"
+            onClick={() => setIsFormOpen(true)}
+          >
+            <PlusCircle className="mr-2 h-4 w-4" /> Crear primer rancho
+          </Button>
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {ranchos.map((rancho) => (
+            <RanchoCard 
+              key={rancho.id_Rancho} 
+              rancho={rancho} 
+              onEdit={(r) => {
+                setEditingRancho(r);
+                setIsFormOpen(true);
+              }}
+              onDelete={handleDeleteRancho}
+              onView={(r) => {
+                setViewingRancho(r);
+                setIsViewDialogOpen(true);
+              }}
+            />
+          ))}
+        </div>
+      )}
 
       {viewingRancho && (
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
@@ -318,16 +356,16 @@ const RanchosPage = () => {
                 <p>{viewingRancho.ubicacion || 'No especificada'}</p>
                 
                 <strong>Propietario:</strong> 
-                <p>{viewingRancho.propietario}</p>
+                <p>{viewingRancho.propietario || 'No especificado'}</p>
                 
                 <strong>Email:</strong> 
-                <p>{viewingRancho.email}</p>
+                <p>{viewingRancho.email || 'No especificado'}</p>
                 
                 <strong>Teléfono:</strong> 
-                <p>{viewingRancho.telefono}</p>
+                <p>{viewingRancho.telefono || 'No especificado'}</p>
                 
                 <strong>Total de Lotes:</strong> 
-                <p>{viewingRancho.totalLotes}</p>
+                <p>{viewingRancho.totalLotes || 0}</p>
               </div>
             </div>
             <DialogFooter>
