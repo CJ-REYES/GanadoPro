@@ -131,17 +131,31 @@ const GanadoPage = () => {
         : 'http://localhost:5201/api/Animales';
 
       const payload = {
-        Arete: formData.arete,
-        Raza: formData.raza,
-        Sexo: formData.sexo,
-        Peso: formData.peso ? Number(formData.peso) : null,
-        Clasificacion: formData.clasificacion,
-        Edad_Meses: formData.edad ? Number(formData.edad) : 0,
-        Observaciones: formData.observaciones || null,
-        FechaIngreso: formData.fechaIngreso,
-        Id_Rancho: Number(formData.idRancho),
-        Id_Lote: formData.idLote ? Number(formData.idLote) : null,
-        Estado: formData.estado || "EnStock"
+        Id_Rancho: Number(formData.Id_Rancho),
+        Arete: formData.Arete,
+        Peso: formData.Peso ? Number(formData.Peso) : null,
+        Sexo: formData.Sexo,
+        Clasificacion: formData.Clasificacion || 'Sin clasificar',
+        Raza: formData.Raza,
+        Edad_Meses: formData.Edad_Meses ? Number(formData.Edad_Meses) : null,
+        FoliGuiaRemoEntrada: formData.FoliGuiaRemoEntrada || null,
+        FoliGuiaRemoSalida: formData.FoliGuiaRemoSalida || null,
+        UppOrigen: formData.UppOrigen || null,
+        UppDestino: formData.UppDestino || null,
+        FechaIngreso: formData.FechaIngreso ? new Date(formData.FechaIngreso) : new Date(),
+        FechaSalida: formData.FechaSalida ? new Date(formData.FechaSalida) : null,
+        MotivoSalida: formData.MotivoSalida || null,
+        Observaciones: formData.Observaciones || null,
+        CertificadoZootanitario: formData.CertificadoZootanitario || null,
+        ContanciaGarrapaticida: formData.ContanciaGarrapaticida || null,
+        FolioTB: formData.FolioTB || null,
+        ValidacionConside_ID: formData.ValidacionConside_ID || null,
+        FierroCliente: formData.FierroCliente || null,
+        RazonSocial: formData.RazonSocial || null,
+        Estado: formData.Estado || 'Saludable',
+        Id_Lote: formData.Id_Lote ? Number(formData.Id_Lote) : null
+
+        
       };
 
       const headers = getAuthHeaders();
@@ -209,38 +223,61 @@ const GanadoPage = () => {
     }
   };
 
-  const openEditForm = (animal) => {
+  function openEditForm(_animal) {
     setEditingAnimal({
-      id: animal.Id_Animal,
-      idRancho: animal.Id_Rancho?.toString() || '',
-      arete: animal.Arete,
-      raza: animal.Raza,
-      sexo: animal.Sexo,
-      edad: animal.Edad_Meses?.toString() || '',
-      peso: animal.Peso?.toString() || '',
-      idLote: animal.Id_Lote?.toString() || '',
-      clasificacion: animal.Clasificacion,
-      estado: animal.Estado,
-      fechaIngreso: animal.FechaIngreso ? new Date(animal.FechaIngreso).toISOString().split('T')[0] : '',
-      observaciones: animal.Observaciones
+      Id_Rancho: Number(formData.Id_Rancho),
+      Arete: formData.Arete,
+      Peso: formData.Peso ? Number(formData.Peso) : null,
+      Sexo: formData.Sexo,
+      Clasificacion: formData.Clasificacion || 'Sin clasificar',
+      Raza: formData.Raza,
+      Edad_Meses: formData.Edad_Meses ? Number(formData.Edad_Meses) : null,
+      FoliGuiaRemoEntrada: formData.FoliGuiaRemoEntrada || null,
+      FoliGuiaRemoSalida: formData.FoliGuiaRemoSalida || null,
+      UppOrigen: formData.UppOrigen || null,
+      UppDestino: formData.UppDestino || null,
+      FechaIngreso: formData.FechaIngreso ? new Date(formData.FechaIngreso) : new Date(),
+      FechaSalida: formData.FechaSalida ? new Date(formData.FechaSalida) : null,
+      MotivoSalida: formData.MotivoSalida || null,
+      Observaciones: formData.Observaciones || null,
+      CertificadoZootanitario: formData.CertificadoZootanitario || null,
+      ContanciaGarrapaticida: formData.ContanciaGarrapaticida || null,
+      FolioTB: formData.FolioTB || null,
+      ValidacionConside_ID: formData.ValidacionConside_ID || null,
+      FierroCliente: formData.FierroCliente || null,
+      RazonSocial: formData.RazonSocial || null,
+      Estado: formData.Estado || 'Saludable',
+      Id_Lote: formData.Id_Lote ? Number(formData.Id_Lote) : null
     });
     setIsFormOpen(true);
-  };
+  }
 
-  const openViewDialog = (animal) => {
+  const openViewDialog = (_animal) => {
     setViewingAnimal({
-      id: animal.Id_Animal,
-      arete: animal.Arete,
-      raza: animal.Raza,
-      sexo: animal.Sexo,
-      edad: animal.Edad_Meses ? `${animal.Edad_Meses} meses` : 'N/A',
-      peso: animal.Peso ? `${animal.Peso} kg` : 'N/A',
-      lote: animal.Id_Lote ? `Lote ${animal.Id_Lote}` : 'Sin lote',
-      estado: animal.Estado,
-      clasificacion: animal.Clasificacion,
-      fechaIngreso: animal.FechaIngreso ? new Date(animal.FechaIngreso).toLocaleDateString() : 'N/A',
-      observaciones: animal.Observaciones,
-      nombreRancho: animal.NombreRancho || 'N/A'
+      Id_Rancho: Number(formData.Id_Rancho),
+        Arete: formData.Arete,
+        Peso: formData.Peso ? Number(formData.Peso) : null,
+        Sexo: formData.Sexo,
+        Clasificacion: formData.Clasificacion || 'Sin clasificar',
+        Raza: formData.Raza,
+        Edad_Meses: formData.Edad_Meses ? Number(formData.Edad_Meses) : null,
+        FoliGuiaRemoEntrada: formData.FoliGuiaRemoEntrada || null,
+        FoliGuiaRemoSalida: formData.FoliGuiaRemoSalida || null,
+        UppOrigen: formData.UppOrigen || null,
+        UppDestino: formData.UppDestino || null,
+        FechaIngreso: formData.FechaIngreso ? new Date(formData.FechaIngreso) : new Date(),
+        FechaSalida: formData.FechaSalida ? new Date(formData.FechaSalida) : null,
+        MotivoSalida: formData.MotivoSalida || null,
+        Observaciones: formData.Observaciones || null,
+        CertificadoZootanitario: formData.CertificadoZootanitario || null,
+        ContanciaGarrapaticida: formData.ContanciaGarrapaticida || null,
+        FolioTB: formData.FolioTB || null,
+        ValidacionConside_ID: formData.ValidacionConside_ID || null,
+        FierroCliente: formData.FierroCliente || null,
+        RazonSocial: formData.RazonSocial || null,
+        Estado: formData.Estado || 'Saludable',
+        Id_Lote: formData.Id_Lote ? Number(formData.Id_Lote) : null
+
     });
     setIsViewDialogOpen(true);
   };
@@ -255,21 +292,8 @@ const GanadoPage = () => {
 
   const machos = filterGanado(ganado.filter(g => g.Sexo === 'Macho'));
   const hembras = filterGanado(ganado.filter(g => g.Sexo === 'Hembra'));
+   
   
-  const mapToTableData = (data) => data.map(animal => ({
-    Id_Animal: animal.Id_Animal,
-    Arete: animal.Arete,
-    Raza: animal.Raza,
-    Sexo: animal.Sexo,
-    Edad_Meses: animal.Edad_Meses || 'N/A',
-    Peso: animal.Peso ? `${animal.Peso} kg` : 'N/A',
-    Id_Lote: animal.Id_Lote ? `Lote ${animal.Id_Lote}` : 'Sin lote',
-    Estado: animal.Estado,
-    Clasificacion: animal.Clasificacion,
-    FechaIngreso: animal.FechaIngreso ? new Date(animal.FechaIngreso).toLocaleDateString() : 'N/A',
-    Observaciones: animal.Observaciones,
-    NombreRancho: animal.NombreRancho || 'N/A'
-  }));
 
   return (
     <motion.div 
@@ -350,7 +374,7 @@ const GanadoPage = () => {
           </TabsList>
           <TabsContent value="machos">
             <GanadoTable 
-              data={mapToTableData(machos)} 
+              data={machos} 
               title="Machos" 
               onView={openViewDialog} 
               onEdit={openEditForm} 
@@ -359,7 +383,7 @@ const GanadoPage = () => {
           </TabsContent>
           <TabsContent value="hembras">
             <GanadoTable 
-              data={mapToTableData(hembras)} 
+              data={hembras} 
               title="Hembras" 
               onView={openViewDialog} 
               onEdit={openEditForm} 
