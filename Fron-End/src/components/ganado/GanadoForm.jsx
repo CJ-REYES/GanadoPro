@@ -37,8 +37,10 @@ const GanadoForm = ({ animalId, onSuccess, onCancel }) => {
     FierroCliente: '',
     RazonSocial: ''
   });
+  
   const [isSubmitting, setIsSubmitting] = React.useState(false);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [errors, setErrors] = React.useState({});
   const { toast } = useToast();
 
   // Cargar datos del animal si estamos editando
@@ -90,11 +92,28 @@ const GanadoForm = ({ animalId, onSuccess, onCancel }) => {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    let processedValue = value;
+    
+    // Convertir UPP a mayúsculas automáticamente
+    if (name === 'UppOrigen' || name === 'UppDestino') {
+      processedValue = value.toUpperCase();
+    }
+    
+    setFormData(prev => ({ ...prev, [name]: processedValue }));
+    
+    // Limpiar errores al cambiar
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: undefined }));
+    }
   };
 
   const handleSelectChange = (name, value) => {
     setFormData(prev => ({ ...prev, [name]: value }));
+    
+    // Limpiar errores al cambiar
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: undefined }));
+    }
   };
 
   const handleFileChange = (e) => {
@@ -108,27 +127,78 @@ const GanadoForm = ({ animalId, onSuccess, onCancel }) => {
     }
   };
 
+  // Validar campos requeridos
+  const validateRequiredFields = () => {
+    const newErrors = {};
+    let isValid = true;
+
+    if (!formData.Id_Rancho) {
+      newErrors.Id_Rancho = 'El ID del rancho es requerido';
+      isValid = false;
+    }
+    
+    if (!formData.Arete) {
+      newErrors.Arete = 'El número de arete es requerido';
+      isValid = false;
+    }
+    
+    if (!formData.Raza) {
+      newErrors.Raza = 'La raza es requerida';
+      isValid = false;
+    }
+    
+    if (!formData.Sexo) {
+      newErrors.Sexo = 'El sexo es requerido';
+      isValid = false;
+    }
+    
+    if (!formData.FechaIngreso) {
+      newErrors.FechaIngreso = 'La fecha de ingreso es requerida';
+      isValid = false;
+    }
+
+    // Validar formato UPP
+    if (formData.UppOrigen && !/^[A-Z0-9]{10}$/.test(formData.UppOrigen)) {
+      newErrors.UppOrigen = 'UPP debe tener 10 caracteres alfanuméricos';
+      isValid = false;
+    }
+    
+    if (formData.UppDestino && !/^[A-Z0-9]{10}$/.test(formData.UppDestino)) {
+      newErrors.UppDestino = 'UPP debe tener 10 caracteres alfanuméricos';
+      isValid = false;
+    }
+
+    setErrors(newErrors);
+    return isValid;
+  };
+
+  // Verificar si todos los campos requeridos están llenos
+  const isFormValid = () => {
+    return (
+      formData.Id_Rancho &&
+      formData.Arete &&
+      formData.Raza &&
+      formData.Sexo &&
+      formData.FechaIngreso
+    );
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Validar campos antes de enviar
+    if (!validateRequiredFields()) {
+      toast({
+        title: "Error de validación",
+        description: "Por favor completa todos los campos requeridos correctamente",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
-      // Validación de campos requeridos
-      if (!formData.Id_Rancho) throw new Error('El ID del rancho es requerido');
-      if (!formData.Arete) throw new Error('El número de arete es requerido');
-      if (!formData.Raza) throw new Error('La raza es requerida');
-      if (!formData.Sexo) throw new Error('El sexo es requerido');
-      if (!formData.FechaIngreso) throw new Error('La fecha de ingreso es requerida');
-
-      // Validar UPP si se proporciona
-      if (formData.UppOrigen && !/^[A-Z0-9]{10}$/.test(formData.UppOrigen)) {
-        throw new Error('UPP Origen debe tener 10 caracteres alfanuméricos en mayúsculas');
-      }
-      
-      if (formData.UppDestino && !/^[A-Z0-9]{10}$/.test(formData.UppDestino)) {
-        throw new Error('UPP Destino debe tener 10 caracteres alfanuméricos en mayúsculas');
-      }
-
       // Preparar payload según la API
       const payload = {
         Id_Rancho: Number(formData.Id_Rancho),
@@ -196,42 +266,68 @@ const GanadoForm = ({ animalId, onSuccess, onCancel }) => {
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="Id_Rancho">ID del Rancho*</Label>
+          <Label htmlFor="Id_Rancho">
+            ID del Rancho*
+            {!formData.Id_Rancho && (
+              <span className="text-red-500 ml-1">(Requerido)</span>
+            )}
+          </Label>
           <Input 
             id="Id_Rancho" 
             name="Id_Rancho" 
             type="number"
             value={formData.Id_Rancho} 
             onChange={handleChange} 
-            required
           />
+          {errors.Id_Rancho && (
+            <p className="text-red-500 text-xs mt-1">{errors.Id_Rancho}</p>
+          )}
         </div>
 
         <div>
-          <Label htmlFor="Arete">Arete*</Label>
+          <Label htmlFor="Arete">
+            Arete*
+            {!formData.Arete && (
+              <span className="text-red-500 ml-1">(Requerido)</span>
+            )}
+          </Label>
           <Input 
             id="Arete" 
             name="Arete" 
             value={formData.Arete} 
             onChange={handleChange} 
-            required 
           />
+          {errors.Arete && (
+            <p className="text-red-500 text-xs mt-1">{errors.Arete}</p>
+          )}
         </div>
       </div>
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="Raza">Raza*</Label>
+          <Label htmlFor="Raza">
+            Raza*
+            {!formData.Raza && (
+              <span className="text-red-500 ml-1">(Requerido)</span>
+            )}
+          </Label>
           <Input 
             id="Raza" 
             name="Raza" 
             value={formData.Raza} 
             onChange={handleChange} 
-            required 
           />
+          {errors.Raza && (
+            <p className="text-red-500 text-xs mt-1">{errors.Raza}</p>
+          )}
         </div>
         <div>
-          <Label htmlFor="Sexo">Sexo*</Label>
+          <Label htmlFor="Sexo">
+            Sexo*
+            {!formData.Sexo && (
+              <span className="text-red-500 ml-1">(Requerido)</span>
+            )}
+          </Label>
           <Select 
             value={formData.Sexo} 
             onValueChange={(value) => handleSelectChange('Sexo', value)}
@@ -244,6 +340,9 @@ const GanadoForm = ({ animalId, onSuccess, onCancel }) => {
               <SelectItem value="Hembra">Hembra</SelectItem>
             </SelectContent>
           </Select>
+          {errors.Sexo && (
+            <p className="text-red-500 text-xs mt-1">{errors.Sexo}</p>
+          )}
         </div>
       </div>
       
@@ -333,6 +432,9 @@ const GanadoForm = ({ animalId, onSuccess, onCancel }) => {
             maxLength={10}
             placeholder="Ej: ABC1234567"
           />
+          {errors.UppOrigen && (
+            <p className="text-red-500 text-xs mt-1">{errors.UppOrigen}</p>
+          )}
         </div>
         <div>
           <Label htmlFor="UppDestino">UPP Destino (10 caracteres)</Label>
@@ -344,6 +446,9 @@ const GanadoForm = ({ animalId, onSuccess, onCancel }) => {
             maxLength={10}
             placeholder="Ej: XYZ9876543"
           />
+          {errors.UppDestino && (
+            <p className="text-red-500 text-xs mt-1">{errors.UppDestino}</p>
+          )}
         </div>
       </div>
       
@@ -370,15 +475,22 @@ const GanadoForm = ({ animalId, onSuccess, onCancel }) => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="FechaIngreso">Fecha de Ingreso*</Label>
+          <Label htmlFor="FechaIngreso">
+            Fecha de Ingreso*
+            {!formData.FechaIngreso && (
+              <span className="text-red-500 ml-1">(Requerido)</span>
+            )}
+          </Label>
           <Input 
             id="FechaIngreso" 
             name="FechaIngreso" 
             type="date" 
             value={formData.FechaIngreso} 
             onChange={handleChange} 
-            required 
           />
+          {errors.FechaIngreso && (
+            <p className="text-red-500 text-xs mt-1">{errors.FechaIngreso}</p>
+          )}
         </div>
         <div>
           <Label htmlFor="FechaSalida">Fecha de Salida</Label>
@@ -471,7 +583,11 @@ const GanadoForm = ({ animalId, onSuccess, onCancel }) => {
             Cancelar
           </Button>
         </DialogClose>
-        <Button type="submit" disabled={isSubmitting}>
+        <Button 
+          type="submit" 
+          disabled={isSubmitting || !isFormValid()}
+          className={!isFormValid() ? "bg-gray-400 cursor-not-allowed" : ""}
+        >
           {isSubmitting ? 'Procesando...' : (animalId ? 'Actualizar Animal' : 'Registrar Animal')}
         </Button>
       </DialogFooter>
