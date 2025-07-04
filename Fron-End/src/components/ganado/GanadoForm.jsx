@@ -5,37 +5,88 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DialogFooter, DialogClose } from "@/components/ui/dialog";
 import { useToast } from "@/components/ui/use-toast";
+import {
+  createAnimal,
+  updateAnimal,
+  getAnimalById
+} from '@/services/ganadoService';
 
-const GanadoForm = ({ animal, onSuccess, onCancel }) => {
-  const [formData, setFormData] = React.useState(
-    animal || { 
-      Id_Rancho: '',
-      Arete: '', 
-      Raza: '', 
-      Sexo: 'Macho', 
-      Edad_Meses: '', 
-      Peso: '', 
-      Id_Lote: '', 
-      Estado: 'EnStock',  // Estado corregido según API
-      FechaIngreso: new Date().toISOString().split('T')[0],
-      Observaciones: '',
-      Clasificacion: '',
-      UppOrigen: '',
-      UppDestino: '',
-      FechaSalida: '',
-      MotivoSalida: '',
-      FoliGuiaRemoEntrada: '',
-      FoliGuiaRemoSalida: '',
-      CertificadoZootanitario: '',
-      ContanciaGarrapaticida: '',
-      FolioTB: '',
-      ValidacionConside_ID: '',
-      FierroCliente: '',
-      RazonSocial: ''
-    }
-  );
+const GanadoForm = ({ animalId, onSuccess, onCancel }) => {
+  const [formData, setFormData] = React.useState({
+    Id_Rancho: '',
+    Arete: '', 
+    Raza: '', 
+    Sexo: 'Macho', 
+    Edad_Meses: '', 
+    Peso: '', 
+    Id_Lote: '', 
+    Estado: 'EnStock',
+    FechaIngreso: new Date().toISOString().split('T')[0],
+    Observaciones: '',
+    Clasificacion: '',
+    UppOrigen: '',
+    UppDestino: '',
+    FechaSalida: '',
+    MotivoSalida: '',
+    FoliGuiaRemoEntrada: '',
+    FoliGuiaRemoSalida: '',
+    CertificadoZootanitario: '',
+    ContanciaGarrapaticida: '',
+    FolioTB: '',
+    ValidacionConside_ID: '',
+    FierroCliente: '',
+    RazonSocial: ''
+  });
   const [isSubmitting, setIsSubmitting] = React.useState(false);
+  const [isLoading, setIsLoading] = React.useState(false);
   const { toast } = useToast();
+
+  // Cargar datos del animal si estamos editando
+  React.useEffect(() => {
+    if (animalId) {
+      const loadAnimalData = async () => {
+        setIsLoading(true);
+        try {
+          const animal = await getAnimalById(animalId);
+          setFormData({
+            Id_Rancho: animal.id_Rancho,
+            Arete: animal.arete,
+            Raza: animal.raza,
+            Sexo: animal.sexo,
+            Edad_Meses: animal.edad_Meses,
+            Peso: animal.peso,
+            Id_Lote: animal.id_Lote,
+            Estado: animal.estado,
+            FechaIngreso: animal.fechaIngreso,
+            Observaciones: animal.observaciones,
+            Clasificacion: animal.clasificacion,
+            UppOrigen: animal.uppOrigen,
+            UppDestino: animal.uppDestino,
+            FechaSalida: animal.fechaSalida,
+            MotivoSalida: animal.motivoSalida,
+            FoliGuiaRemoEntrada: animal.foliGuiaRemoEntrada,
+            FoliGuiaRemoSalida: animal.foliGuiaRemoSalida,
+            CertificadoZootanitario: animal.certificadoZootanitario,
+            ContanciaGarrapaticida: animal.contanciaGarrapaticida,
+            FolioTB: animal.folioTB,
+            ValidacionConside_ID: animal.validacionConside_ID,
+            FierroCliente: animal.fierroCliente,
+            RazonSocial: animal.razonSocial
+          });
+        } catch (error) {
+          toast({
+            title: "Error",
+            description: error.message,
+            variant: "destructive",
+          });
+        } finally {
+          setIsLoading(false);
+        }
+      };
+      
+      loadAnimalData();
+    }
+  }, [animalId, toast]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -51,9 +102,7 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
     if (file) {
       const reader = new FileReader();
       reader.onloadend = () => {
-        // Mantener el base64 completo para la API
-        const base64String = reader.result;
-        setFormData(prev => ({ ...prev, FierroCliente: base64String }));
+        setFormData(prev => ({ ...prev, FierroCliente: reader.result }));
       };
       reader.readAsDataURL(file);
     }
@@ -80,7 +129,7 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
         throw new Error('UPP Destino debe tener 10 caracteres alfanuméricos en mayúsculas');
       }
 
-      // Preparar payload según el CreateAnimalDto de la API
+      // Preparar payload según la API
       const payload = {
         Id_Rancho: Number(formData.Id_Rancho),
         Arete: formData.Arete,
@@ -94,65 +143,41 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
         UppOrigen: formData.UppOrigen || null,
         UppDestino: formData.UppDestino || null,
         FechaIngreso: formData.FechaIngreso,
+        FechaSalida: formData.FechaSalida || null,
         MotivoSalida: formData.MotivoSalida || null,
         Observaciones: formData.Observaciones || null,
         CertificadoZootanitario: formData.CertificadoZootanitario || null,
         ContanciaGarrapaticida: formData.ContanciaGarrapaticida || null,
         FolioTB: formData.FolioTB || null,
         ValidacionConside_ID: formData.ValidacionConside_ID || null,
-        FierroCliente: formData.FierroCliente ? formData.FierroCliente.split(',')[1] : null,
+        FierroCliente: formData.FierroCliente || null,
         RazonSocial: formData.RazonSocial || null,
         Estado: formData.Estado,
         Id_Lote: formData.Id_Lote ? Number(formData.Id_Lote) : null
       };
 
-      // Verificar token de autenticación
-      const token = localStorage.getItem('token');
-      if (!token) {
-        throw new Error('No se encontró token de autenticación. Por favor, inicie sesión nuevamente.');
+      let result;
+      if (animalId) {
+        // Actualizar animal existente
+        await updateAnimal(animalId, payload);
+        result = { id_Animal: animalId, ...payload };
+        toast({
+          title: "Éxito",
+          description: "Animal actualizado correctamente",
+        });
+      } else {
+        // Crear nuevo animal
+        result = await createAnimal(payload);
+        toast({
+          title: "Éxito",
+          description: "Animal registrado correctamente",
+        });
       }
-
-      // Enviar datos a la API
-      const response = await fetch('http://localhost:5201/api/Animales', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      // Manejar respuesta de la API
-      if (!response.ok) {
-        let errorData;
-        try {
-          errorData = await response.json();
-        } catch {
-          throw new Error(`Error ${response.status}: ${response.statusText}`);
-        }
-        
-        // Manejar errores específicos de la API
-        const errorMessage = errorData.Field 
-          ? `Error en ${errorData.Field}: ${errorData.Message || errorData.message}`
-          : errorData.Message || errorData.message || 'Error al registrar el animal';
-          
-        throw new Error(errorMessage);
-      }
-
-      const data = await response.json();
       
-      // Mostrar mensaje de éxito
-      toast({
-        title: "Éxito",
-        description: "Animal registrado correctamente",
-      });
-      
-      // Llamar a la función de éxito si está definida
       if (onSuccess) {
-        onSuccess(data);
+        onSuccess(result);
       }
     } catch (error) {
-      // Mostrar mensaje de error
       toast({
         title: "Error",
         description: error.message,
@@ -162,6 +187,10 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
       setIsSubmitting(false);
     }
   };
+
+  if (isLoading) {
+    return <div className="text-center py-4">Cargando datos del animal...</div>;
+  }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
@@ -443,7 +472,7 @@ const GanadoForm = ({ animal, onSuccess, onCancel }) => {
           </Button>
         </DialogClose>
         <Button type="submit" disabled={isSubmitting}>
-          {isSubmitting ? 'Procesando...' : 'Registrar Animal'}
+          {isSubmitting ? 'Procesando...' : (animalId ? 'Actualizar Animal' : 'Registrar Animal')}
         </Button>
       </DialogFooter>
     </form>

@@ -144,9 +144,9 @@ const Layout = () => {
           <img 
             alt="Logo Control Ganadero" 
             className="h-10 w-auto" 
-            src="https://images.unsplash.com/photo-1606920926813-fb89d0cf2c5d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=600&q=80" 
+            src="https://i.pinimg.com/736x/a3/63/aa/a363aa0c59c10f316af71e236fb441c9.jpg" 
           />
-          <h1 className="ml-2 text-2xl font-bold text-primary">GanadoPro</h1>
+          <h1 className="ml-2 text-2xl font-bold text-primary">Santa Bárbara</h1>
         </div>
         <nav className="flex-grow p-4 space-y-1.5 overflow-y-auto">
           {navItems.map((item) => (
@@ -167,7 +167,7 @@ const Layout = () => {
       <div className="flex-1 flex flex-col overflow-hidden">
         <header className="h-20 flex items-center justify-between px-6 border-b border-border/60 bg-card shadow-md">
           <div className="flex items-center">
-            <h2 className="text-xl font-semibold">Control Ganadero</h2>
+            <h2 className="text-xl font-semibold">Control Ganadero Santa Bárbara</h2>
           </div>
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="icon" onClick={toggleTheme} aria-label="Toggle theme">
