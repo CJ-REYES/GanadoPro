@@ -1,4 +1,5 @@
 // ProductoresPage.jsx
+import { getUser } from '@/hooks/useToken'; 
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -57,29 +58,37 @@ const ProductoresPage = () => {
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
-    try {
-      setLoading(true);
-      if (isEdit) {
-        const updated = await productorService.updateProductor(formData.Id_Cliente, formData);
-        setProductores(prev => prev.map(p => p.Id_Cliente === updated.Id_Cliente ? updated : p));
-      } else {
-        const newProductor = await productorService.createProductor(formData);
-        setProductores([...productores, newProductor]);
-      }
-      setFormData(initialProductorData);
-      setIsEdit(false);
-      setOpenDialog(false);
-      setError(null);
-    } catch (err) {
-      console.error("Error al guardar productor:", err);
-      setError("No se pudo guardar el productor.");
-    } finally {
-      setLoading(false);
-    }
+
+const handleSubmit = async (e) => {
+  e.preventDefault();
+  const user = getUser(); // ✅ obtenido del localStorage
+
+  const payload = {
+    ...formData,
+    Id_User: user?.id || user?.Id_User || 0,
+    Rol: "Productor"
   };
 
+  try {
+    setLoading(true);
+    if (isEdit) {
+      const updated = await productorService.updateProductor(formData.Id_Cliente, payload);
+      setProductores(prev => prev.map(p => p.Id_Cliente === updated.Id_Cliente ? updated : p));
+    } else {
+      const newProductor = await productorService.createProductor(payload);
+      setProductores([...productores, newProductor]);
+    }
+    setFormData(initialProductorData);
+    setIsEdit(false);
+    setOpenDialog(false);
+    setError(null);
+  } catch (err) {
+    console.error("Error al guardar productor:", err);
+    setError("No se pudo guardar el productor.");
+  } finally {
+    setLoading(false);
+  }
+};
   const handleEdit = (productor) => {
     setFormData(productor);
     setIsEdit(true);
@@ -170,7 +179,8 @@ const ProductoresPage = () => {
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.entries(formData).map(([key, value]) => (
-                key !== 'Id_User' && key !== 'Id_Cliente' && (
+                // Excluir Id_User, Id_Cliente y Rol de los campos del formulario
+                key !== 'Id_User' && key !== 'Id_Cliente' && key !== 'Rol' && (
                   <div className="space-y-2" key={key}>
                     <Label htmlFor={key}>{key}</Label>
                     <Input id={key} name={key} value={formData[key]} onChange={handleInputChange} required disabled={loading} />
