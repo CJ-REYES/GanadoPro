@@ -41,7 +41,6 @@ const GanadoPage = () => {
   const [ranchos, setRanchos] = useState([]);
 
   const getAuthHeaders = () => {
-    // Usar token del contexto o recuperar de localStorage
     const authToken = token || localStorage.getItem('authToken');
     
     if (!authToken) {
@@ -123,77 +122,6 @@ const GanadoPage = () => {
     fetchGanado();
   }, []);
 
-  const handleFormSubmit = async (formData) => {
-    try {
-      const method = editingAnimal ? 'PUT' : 'POST';
-      const url = editingAnimal 
-        ? `http://localhost:5201/api/Animales/${editingAnimal.id}`
-        : 'http://localhost:5201/api/Animales';
-
-      const payload = {
-        Id_Rancho: Number(formData.Id_Rancho),
-        Arete: formData.Arete,
-        Peso: formData.Peso ? Number(formData.Peso) : null,
-        Sexo: formData.Sexo,
-        Clasificacion: formData.Clasificacion || 'Sin clasificar',
-        Raza: formData.Raza,
-        Edad_Meses: formData.Edad_Meses ? Number(formData.Edad_Meses) : null,
-        FoliGuiaRemoEntrada: formData.FoliGuiaRemoEntrada || null,
-        FoliGuiaRemoSalida: formData.FoliGuiaRemoSalida || null,
-        UppOrigen: formData.UppOrigen || null,
-        UppDestino: formData.UppDestino || null,
-        FechaIngreso: formData.FechaIngreso ? new Date(formData.FechaIngreso) : new Date(),
-        FechaSalida: formData.FechaSalida ? new Date(formData.FechaSalida) : null,
-        MotivoSalida: formData.MotivoSalida || null,
-        Observaciones: formData.Observaciones || null,
-        CertificadoZootanitario: formData.CertificadoZootanitario || null,
-        ContanciaGarrapaticida: formData.ContanciaGarrapaticida || null,
-        FolioTB: formData.FolioTB || null,
-        ValidacionConside_ID: formData.ValidacionConside_ID || null,
-        FierroCliente: formData.FierroCliente || null,
-        RazonSocial: formData.RazonSocial || null,
-        Estado: formData.Estado || 'Saludable',
-        Id_Lote: formData.Id_Lote ? Number(formData.Id_Lote) : null
-
-        
-      };
-
-      const headers = getAuthHeaders();
-      if (!headers.Authorization) return;
-      
-      const response = await fetch(url, {
-        method,
-        headers,
-        body: JSON.stringify(payload)
-      });
-
-      if (response.status === 401) {
-        throw new Error('Token inválido o expirado');
-      }
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.Message || 'Error al guardar');
-      }
-
-      toast({
-        title: "Éxito",
-        description: editingAnimal 
-          ? "Animal actualizado" 
-          : "Animal registrado",
-      });
-
-      setIsFormOpen(false);
-      fetchGanado();
-    } catch (error) {
-      if (error.message === 'Token inválido o expirado') {
-        logout();
-      } else {
-        toast({ title: "Error", description: error.message, variant: "destructive" });
-      }
-    }
-  };
-
   const handleDeleteAnimal = async (animalId) => {
     if (window.confirm('¿Eliminar este animal?')) {
       try {
@@ -223,62 +151,13 @@ const GanadoPage = () => {
     }
   };
 
-  function openEditForm(_animal) {
-    setEditingAnimal({
-      Id_Rancho: Number(formData.Id_Rancho),
-      Arete: formData.Arete,
-      Peso: formData.Peso ? Number(formData.Peso) : null,
-      Sexo: formData.Sexo,
-      Clasificacion: formData.Clasificacion || 'Sin clasificar',
-      Raza: formData.Raza,
-      Edad_Meses: formData.Edad_Meses ? Number(formData.Edad_Meses) : null,
-      FoliGuiaRemoEntrada: formData.FoliGuiaRemoEntrada || null,
-      FoliGuiaRemoSalida: formData.FoliGuiaRemoSalida || null,
-      UppOrigen: formData.UppOrigen || null,
-      UppDestino: formData.UppDestino || null,
-      FechaIngreso: formData.FechaIngreso ? new Date(formData.FechaIngreso) : new Date(),
-      FechaSalida: formData.FechaSalida ? new Date(formData.FechaSalida) : null,
-      MotivoSalida: formData.MotivoSalida || null,
-      Observaciones: formData.Observaciones || null,
-      CertificadoZootanitario: formData.CertificadoZootanitario || null,
-      ContanciaGarrapaticida: formData.ContanciaGarrapaticida || null,
-      FolioTB: formData.FolioTB || null,
-      ValidacionConside_ID: formData.ValidacionConside_ID || null,
-      FierroCliente: formData.FierroCliente || null,
-      RazonSocial: formData.RazonSocial || null,
-      Estado: formData.Estado || 'Saludable',
-      Id_Lote: formData.Id_Lote ? Number(formData.Id_Lote) : null
-    });
+  const openEditForm = (animal) => {
+    setEditingAnimal(animal);
     setIsFormOpen(true);
-  }
+  };
 
-  const openViewDialog = (_animal) => {
-    setViewingAnimal({
-      Id_Rancho: Number(formData.Id_Rancho),
-        Arete: formData.Arete,
-        Peso: formData.Peso ? Number(formData.Peso) : null,
-        Sexo: formData.Sexo,
-        Clasificacion: formData.Clasificacion || 'Sin clasificar',
-        Raza: formData.Raza,
-        Edad_Meses: formData.Edad_Meses ? Number(formData.Edad_Meses) : null,
-        FoliGuiaRemoEntrada: formData.FoliGuiaRemoEntrada || null,
-        FoliGuiaRemoSalida: formData.FoliGuiaRemoSalida || null,
-        UppOrigen: formData.UppOrigen || null,
-        UppDestino: formData.UppDestino || null,
-        FechaIngreso: formData.FechaIngreso ? new Date(formData.FechaIngreso) : new Date(),
-        FechaSalida: formData.FechaSalida ? new Date(formData.FechaSalida) : null,
-        MotivoSalida: formData.MotivoSalida || null,
-        Observaciones: formData.Observaciones || null,
-        CertificadoZootanitario: formData.CertificadoZootanitario || null,
-        ContanciaGarrapaticida: formData.ContanciaGarrapaticida || null,
-        FolioTB: formData.FolioTB || null,
-        ValidacionConside_ID: formData.ValidacionConside_ID || null,
-        FierroCliente: formData.FierroCliente || null,
-        RazonSocial: formData.RazonSocial || null,
-        Estado: formData.Estado || 'Saludable',
-        Id_Lote: formData.Id_Lote ? Number(formData.Id_Lote) : null
-
-    });
+  const openViewDialog = (animal) => {
+    setViewingAnimal(animal);
     setIsViewDialogOpen(true);
   };
 
@@ -293,8 +172,6 @@ const GanadoPage = () => {
   const machos = filterGanado(ganado.filter(g => g.Sexo === 'Macho'));
   const hembras = filterGanado(ganado.filter(g => g.Sexo === 'Hembra'));
    
-  
-
   return (
     <motion.div 
       initial={{ opacity: 0, y: 20 }}
@@ -306,7 +183,10 @@ const GanadoPage = () => {
         <h1 className="text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
           Gestión de Ganado
         </h1>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <Dialog open={isFormOpen} onOpenChange={(open) => {
+          setIsFormOpen(open);
+          if (!open) setEditingAnimal(null);
+        }}>
           <DialogTrigger asChild>
             <Button className="bg-gradient-to-r from-primary to-green-400 hover:from-primary/90 hover:to-green-400/90 transition-all">
               <PlusCircle className="mr-2 h-4 w-4" /> Registrar Animal
@@ -316,17 +196,21 @@ const GanadoPage = () => {
             <DialogHeader>
               <DialogTitle>{editingAnimal ? 'Editar Animal' : 'Registrar Nuevo Animal'}</DialogTitle>
               <DialogDescription>
-                {editingAnimal ? `Actualizando ${editingAnimal.arete}` : 'Registre un nuevo animal'}
+                {editingAnimal ? `Actualizando ${editingAnimal.Arete}` : 'Registre un nuevo animal'}
               </DialogDescription>
             </DialogHeader>
             <GanadoForm 
-              animal={editingAnimal} 
+              animalId={editingAnimal?.Id_Animal}  // Corregido: Id_Animal con mayúscula
               ranchos={ranchos}
               onSuccess={() => {
                 setIsFormOpen(false);
+                setEditingAnimal(null);
                 fetchGanado();
               }}
-              onCancel={() => setIsFormOpen(false)} 
+              onCancel={() => {
+                setIsFormOpen(false);
+                setEditingAnimal(null);
+              }} 
             />
           </DialogContent>
         </Dialog>
@@ -397,26 +281,56 @@ const GanadoPage = () => {
         <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
           <DialogContent className="sm:max-w-lg">
             <DialogHeader>
-              <DialogTitle>Detalles: {viewingAnimal.arete}</DialogTitle>
+              <DialogTitle>Detalles: {viewingAnimal.Arete}</DialogTitle>
             </DialogHeader>
             <div className="grid gap-2 py-4 text-sm">
               <div className="grid grid-cols-2 gap-x-4 gap-y-1">
-                <strong>Arete:</strong> <p>{viewingAnimal.arete}</p>
-                <strong>Raza:</strong> <p>{viewingAnimal.raza}</p>
-                <strong>Sexo:</strong> <p>{viewingAnimal.sexo}</p>
-                <strong>Edad:</strong> <p>{viewingAnimal.edad}</p>
-                <strong>Peso:</strong> <p>{viewingAnimal.peso}</p>
-                <strong>Lote:</strong> <p>{viewingAnimal.lote}</p>
-                <strong>Estado:</strong> <p>{viewingAnimal.estado}</p>
-                <strong>Clasificación:</strong> <p>{viewingAnimal.clasificacion}</p>
-                <strong>Rancho:</strong> <p>{viewingAnimal.nombreRancho}</p>
-                <strong>Fecha Ingreso:</strong> <p>{viewingAnimal.fechaIngreso}</p>
+                <strong>Arete:</strong> <p>{viewingAnimal.Arete}</p>
+                <strong>Raza:</strong> <p>{viewingAnimal.Raza}</p>
+                <strong>Sexo:</strong> <p>{viewingAnimal.Sexo}</p>
+                <strong>Edad (meses):</strong> <p>{viewingAnimal.Edad_Meses}</p>
+                <strong>Peso (kg):</strong> <p>{viewingAnimal.Peso}</p>
+                <strong>Lote:</strong> <p>{viewingAnimal.Id_Lote}</p>
+                <strong>Estado:</strong> <p>{viewingAnimal.Estado}</p>
+                <strong>Clasificación:</strong> <p>{viewingAnimal.Clasificacion}</p>
+                <strong>Rancho ID:</strong> <p>{viewingAnimal.Id_Rancho}</p>
+                <strong>Fecha Ingreso:</strong> 
+                <p>{new Date(viewingAnimal.FechaIngreso).toLocaleDateString()}</p>
+                
+                {viewingAnimal.FechaSalida && (
+                  <>
+                    <strong>Fecha Salida:</strong> 
+                    <p>{new Date(viewingAnimal.FechaSalida).toLocaleDateString()}</p>
+                    <strong>Motivo Salida:</strong> 
+                    <p>{viewingAnimal.MotivoSalida}</p>
+                  </>
+                )}
+                <strong>UPP Origen:</strong> <p>{viewingAnimal.UppOrigen || 'N/A'}</p>
+                <strong>UPP Destino:</strong> <p>{viewingAnimal.UppDestino || 'N/A'}</p>
+                <strong>Guía Remoción Entrada:</strong> <p>{viewingAnimal.FoliGuiaRemoEntrada || 'N/A'}</p>
+                <strong>Guía Remoción Salida:</strong> <p>{viewingAnimal.FoliGuiaRemoSalida || 'N/A'}</p>
+                <strong>Certificado Zootanitario:</strong> <p>{viewingAnimal.CertificadoZootanitario || 'N/A'}</p>
+                <strong>Constancia Garrapaticida:</strong> <p>{viewingAnimal.ContanciaGarrapaticida || 'N/A'}</p>
+                <strong>Folio TB:</strong> <p>{viewingAnimal.FolioTB || 'N/A'}</p>
+                <strong>Validación Conside:</strong> <p>{viewingAnimal.ValidacionConside_ID || 'N/A'}</p>
+                <strong>Razón Social:</strong> <p>{viewingAnimal.RazonSocial || 'N/A'}</p>
               </div>
-              {viewingAnimal.observaciones && (
+              {viewingAnimal.Observaciones && (
                 <>
                   <Separator className="my-2" />
                   <strong>Observaciones:</strong> 
-                  <p className="text-muted-foreground whitespace-pre-wrap">{viewingAnimal.observaciones}</p>
+                  <p className="text-muted-foreground whitespace-pre-wrap">{viewingAnimal.Observaciones}</p>
+                </>
+              )}
+              {viewingAnimal.FierroCliente && (
+                <>
+                  <Separator className="my-2" />
+                  <strong>Fierro Cliente:</strong> 
+                  <img 
+                    src={viewingAnimal.FierroCliente} 
+                    alt="Fierro del cliente" 
+                    className="mt-2 max-w-full h-auto rounded"
+                  />
                 </>
               )}
             </div>

@@ -47,6 +47,18 @@ namespace GanadoProBackEnd.Controllers
 
             return animales.Select(a => MapAnimalToDto(a)).ToList();
         }
+        [HttpGet("enstock")]
+public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesEnStock()
+{
+    var animales = await _context.Animales
+        .Where(a => a.Estado == "EnStock") // Filtra solo animales en stock
+        .Include(a => a.Lote)
+        .Include(a => a.Rancho)
+        .Include(a => a.Clientes)
+        .ToListAsync();
+
+    return animales.Select(a => MapAnimalToDto(a)).ToList();
+}
 
         // GET: Animal por ID
         [HttpGet("{id}")]
@@ -308,6 +320,21 @@ namespace GanadoProBackEnd.Controllers
 
             return NoContent();
         }
+        // PATCH: Remover lote de un animal
+[HttpPatch("{id}/remover-lote")]
+public async Task<IActionResult> RemoverLoteDeAnimal(int id)
+{
+    var animal = await _context.Animales.FindAsync(id);
+    if (animal == null)
+    {
+        return NotFound();
+    }
+
+    animal.Id_Lote = null;
+    await _context.SaveChangesAsync();
+
+    return NoContent();
+}
 
         // Métodos auxiliares
         private AnimalResponseDto MapAnimalToDto(Animal animal)

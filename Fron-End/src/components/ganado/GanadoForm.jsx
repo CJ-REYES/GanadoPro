@@ -11,7 +11,7 @@ import {
   getAnimalById
 } from '@/services/ganadoService';
 
-const GanadoForm = ({ animalId, onSuccess, onCancel }) => {
+const GanadoForm = ({ animalId, ranchos, onSuccess, onCancel }) => {
   const [formData, setFormData] = React.useState({
     Id_Rancho: '',
     Arete: '', 
@@ -50,30 +50,40 @@ const GanadoForm = ({ animalId, onSuccess, onCancel }) => {
         setIsLoading(true);
         try {
           const animal = await getAnimalById(animalId);
+          console.log("Datos del animal cargados:", animal);
+          
+          // Función para formatear fechas
+          const formatDate = (dateString) => {
+            if (!dateString) return '';
+            const date = new Date(dateString);
+            return isNaN(date.getTime()) ? '' : date.toISOString().split('T')[0];
+          };
+
+          // Mapeo exacto de propiedades basado en la respuesta de la API
           setFormData({
-            Id_Rancho: animal.id_Rancho,
-            Arete: animal.arete,
-            Raza: animal.raza,
-            Sexo: animal.sexo,
-            Edad_Meses: animal.edad_Meses,
-            Peso: animal.peso,
-            Id_Lote: animal.id_Lote,
-            Estado: animal.estado,
-            FechaIngreso: animal.fechaIngreso,
-            Observaciones: animal.observaciones,
-            Clasificacion: animal.clasificacion,
-            UppOrigen: animal.uppOrigen,
-            UppDestino: animal.uppDestino,
-            FechaSalida: animal.fechaSalida,
-            MotivoSalida: animal.motivoSalida,
-            FoliGuiaRemoEntrada: animal.foliGuiaRemoEntrada,
-            FoliGuiaRemoSalida: animal.foliGuiaRemoSalida,
-            CertificadoZootanitario: animal.certificadoZootanitario,
-            ContanciaGarrapaticida: animal.contanciaGarrapaticida,
-            FolioTB: animal.folioTB,
-            ValidacionConside_ID: animal.validacionConside_ID,
-            FierroCliente: animal.fierroCliente,
-            RazonSocial: animal.razonSocial
+            Id_Rancho: animal.id_Rancho ? String(animal.id_Rancho) : '',
+            Arete: animal.arete || '',
+            Raza: animal.raza || '',
+            Sexo: animal.sexo || 'Macho',
+            Edad_Meses: animal.edad_Meses || '',
+            Peso: animal.peso || '',
+            Id_Lote: animal.id_Lote || '',
+            Estado: animal.estado || 'EnStock',
+            FechaIngreso: formatDate(animal.fechaIngreso) || new Date().toISOString().split('T')[0],
+            Observaciones: animal.observaciones || '',
+            Clasificacion: animal.clasificacion || '',
+            UppOrigen: animal.uppOrigen || '',
+            UppDestino: animal.uppDestino || '',
+            FechaSalida: formatDate(animal.fechaSalida) || '',
+            MotivoSalida: animal.motivoSalida || '',
+            FoliGuiaRemoEntrada: animal.foliGuiaRemoEntrada || '',
+            FoliGuiaRemoSalida: animal.foliGuiaRemoSalida || '',
+            CertificadoZootanitario: animal.certificadoZootanitario || '',
+            ContanciaGarrapaticida: animal.contanciaGarrapaticida || '',
+            FolioTB: animal.folioTB || '',
+            ValidacionConside_ID: animal.validacionConside_ID || '',
+            FierroCliente: animal.fierroCliente || '',
+            RazonSocial: animal.razonSocial || ''
           });
         } catch (error) {
           toast({
@@ -133,7 +143,7 @@ const GanadoForm = ({ animalId, onSuccess, onCancel }) => {
     let isValid = true;
 
     if (!formData.Id_Rancho) {
-      newErrors.Id_Rancho = 'El ID del rancho es requerido';
+      newErrors.Id_Rancho = 'Debe seleccionar un rancho';
       isValid = false;
     }
     
@@ -265,20 +275,49 @@ const GanadoForm = ({ animalId, onSuccess, onCancel }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        {/* Selector de Ranchos Mejorado */}
         <div>
           <Label htmlFor="Id_Rancho">
-            ID del Rancho*
+            Rancho*
             {!formData.Id_Rancho && (
               <span className="text-red-500 ml-1">(Requerido)</span>
             )}
           </Label>
-          <Input 
-            id="Id_Rancho" 
-            name="Id_Rancho" 
-            type="number"
+          <Select 
             value={formData.Id_Rancho} 
-            onChange={handleChange} 
-          />
+            onValueChange={(value) => handleSelectChange('Id_Rancho', value)}
+          >
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Selecciona un rancho">
+                {formData.Id_Rancho ? (
+                  ranchos.find(r => String(r.Id_Rancho) === formData.Id_Rancho)?.Nombre || "Rancho seleccionado"
+                ) : (
+                  "Selecciona un rancho"
+                )}
+              </SelectValue>
+            </SelectTrigger>
+            <SelectContent className="max-h-60 overflow-y-auto">
+              {ranchos.length > 0 ? (
+                ranchos.map(rancho => (
+                  <SelectItem 
+                    key={rancho.Id_Rancho} 
+                    value={String(rancho.Id_Rancho)}
+                    className="py-2 hover:bg-primary/10 transition-colors"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="font-medium">{rancho.Nombre}</span>
+                      <span className="text-muted-foreground text-xs">(ID: {rancho.Id_Rancho})</span>
+                    </div>
+                  </SelectItem>
+                ))
+              ) : (
+                <div className="text-center py-4">
+                  <p className="text-muted-foreground text-sm">No hay ranchos disponibles</p>
+                  <p className="text-xs text-muted-foreground mt-1">Registra ranchos primero</p>
+                </div>
+              )}
+            </SelectContent>
+          </Select>
           {errors.Id_Rancho && (
             <p className="text-red-500 text-xs mt-1">{errors.Id_Rancho}</p>
           )}
@@ -565,6 +604,15 @@ const GanadoForm = ({ animalId, onSuccess, onCancel }) => {
           accept="image/*"
           onChange={handleFileChange} 
         />
+        {formData.FierroCliente && (
+          <div className="mt-2">
+            <img 
+              src={formData.FierroCliente} 
+              alt="Fierro del cliente" 
+              className="max-w-xs h-auto rounded"
+            />
+          </div>
+        )}
       </div>
       
       <div>

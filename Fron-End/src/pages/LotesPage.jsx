@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Search, Filter, ChevronDown, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Search, Filter, ChevronDown, Edit, Trash2, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { Label } from "@/components/ui/label";
 import {
@@ -29,6 +29,7 @@ import useLocalStorage from '@/hooks/useLocalStorage';
 import { cn } from '@/lib/utils';
 import * as loteService from '@/services/loteService';
 import * as ranchoService from '@/services/ranchoService';
+import * as animalService from '@/services/animalService';
 
 const LoteForm = ({ lote, ranchos, onSubmit, onCancel }) => {
   const [formData, setFormData] = useState(
@@ -113,8 +114,9 @@ const LoteForm = ({ lote, ranchos, onSubmit, onCancel }) => {
   );
 };
 
-const LoteAccordion = ({ lote, onEdit, onDelete }) => {
+const LoteAccordion = ({ lote, onEdit, onDelete, onRemoveAnimal }) => {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isRemoving, setIsRemoving] = useState(false); // Estado para mostrar carga al eliminar
 
   const getStatusClass = (estado) => {
     return cn(`px-2 py-1 text-xs rounded-full`,
@@ -122,6 +124,15 @@ const LoteAccordion = ({ lote, onEdit, onDelete }) => {
       estado === 'Vendido' && 'bg-gray-500/20 text-gray-400',
       estado === 'En proceso de venta' && 'bg-yellow-500/20 text-yellow-400'
     );
+  };
+
+  const handleRemove = async (animalId) => {
+    setIsRemoving(true);
+    try {
+      await onRemoveAnimal(animalId);
+    } finally {
+      setIsRemoving(false);
+    }
   };
 
   return (
@@ -202,6 +213,7 @@ const LoteAccordion = ({ lote, onEdit, onDelete }) => {
                       <th className="px-4 py-2 text-left">Sexo</th>
                       <th className="px-4 py-2 text-left">Edad</th>
                       <th className="px-4 py-2 text-left">Peso</th>
+                      <th className="px-4 py-2 text-left">Acciones</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -219,6 +231,19 @@ const LoteAccordion = ({ lote, onEdit, onDelete }) => {
                         </td>
                         <td className="px-4 py-2">{animal.edad || 0} meses</td>
                         <td className="px-4 py-2">{animal.peso || 0} kg</td>
+                        <td className="px-4 py-2">
+                          <Button 
+                            variant="destructive" 
+                            size="sm"
+                            onClick={() => handleRemove(animal.id_Animal)}
+                            className="text-xs"
+                            disabled={isRemoving}
+                          >
+                            {isRemoving ? (
+                              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            ) : 'Eliminar'}
+                          </Button>
+                        </td>
                       </tr>
                     ))}
                   </tbody>
@@ -236,12 +261,157 @@ const LoteAccordion = ({ lote, onEdit, onDelete }) => {
   );
 };
 
+const AssignAnimalsForm = ({ lotes, onAssign, onCancel }) => {
+  const [selectedLote, setSelectedLote] = useState('');
+  const [selectedAnimals, setSelectedAnimals] = useState([]);
+  const [animals, setAnimals] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [isAssigning, setIsAssigning] = useState(false); // Estado para mostrar carga
+
+  // Obtener animales disponibles
+  useEffect(() => {
+    const fetchAnimals = async () => {
+      try {
+        const data = await animalService.getAnimalesEnStock();
+        
+        // Filtrar animales sin lote asignado y con id_Animal definido
+        const availableAnimals = data
+          .filter(animal => !animal.id_Lote)
+          .filter(animal => animal.id_Animal); // Solo animales con id_Animal definido
+          
+        setAnimals(availableAnimals);
+      } catch (err) {
+        setError(err.message || 'Error al cargar animales');
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchAnimals();
+  }, []);
+
+  const toggleAnimalSelection = (animalId) => {
+    setSelectedAnimals(prev => 
+      prev.includes(animalId)
+        ? prev.filter(id => id !== animalId)
+        : [...prev, animalId]
+    );
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedLote || selectedAnimals.length === 0) return;
+    
+    setIsAssigning(true);
+    try {
+      await onAssign(parseInt(selectedLote), selectedAnimals);
+    } catch (error) {
+      // El error se maneja en la función onAssign
+    } finally {
+      setIsAssigning(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-2">
+        <Label htmlFor="lote" className="text-foreground">Seleccionar Lote</Label>
+        <select
+          id="lote"
+          value={selectedLote}
+          onChange={(e) => setSelectedLote(e.target.value)}
+          className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+          required
+        >
+          <option value="">Seleccione un lote</option>
+          {lotes.map(lote => (
+            <option key={`lote-${lote.id_Lote}`} value={lote.id_Lote}>
+              Lote #{lote.remo} - {lote.rancho?.nombre || 'Sin rancho'}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="space-y-2">
+        <Label className="text-foreground">Animales Disponibles</Label>
+        
+        {isLoading ? (
+          <div className="flex justify-center py-4">
+            <div className="animate-spin rounded-full h-6 w-6 border-t-2 border-b-2 border-primary"></div>
+          </div>
+        ) : error ? (
+          <div className="text-destructive text-center py-4">{error}</div>
+        ) : animals.length === 0 ? (
+          <p className="text-muted-foreground text-center py-4">
+            No hay animales disponibles para asignar
+          </p>
+        ) : (
+          <div className="max-h-80 overflow-y-auto border rounded-md p-4">
+            {animals.map(animal => (
+              <div 
+                key={`animal-${animal.id_Animal}`}
+                className={`flex items-center p-2 rounded-md ${
+                  selectedAnimals.includes(animal.id_Animal)
+                    ? 'bg-primary/10 border border-primary'
+                    : 'hover:bg-muted/30'
+                }`}
+              >
+                <input
+                  type="checkbox"
+                  id={`animal-${animal.id_Animal}`}
+                  checked={selectedAnimals.includes(animal.id_Animal)}
+                  onChange={() => toggleAnimalSelection(animal.id_Animal)}
+                  className="mr-3 h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <label 
+                  htmlFor={`animal-${animal.id_Animal}`} 
+                  className="flex-1 cursor-pointer"
+                >
+                  <p className="font-medium">Arete: {animal.arete}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {animal.raza} | {animal.peso} kg | {animal.edad_Meses} meses
+                  </p>
+                </label>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <DialogFooter className="gap-2 pt-4">
+        <Button 
+          type="button" 
+          variant="outline" 
+          onClick={onCancel}
+          disabled={isAssigning}
+        >
+          Cancelar
+        </Button>
+        <Button 
+          type="submit"
+          disabled={!selectedLote || selectedAnimals.length === 0 || isAssigning}
+          className="bg-primary text-primary-foreground hover:bg-primary/90"
+        >
+          {isAssigning ? (
+            <>
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+              Asignando...
+            </>
+          ) : 'Asignar Animales'}
+        </Button>
+      </DialogFooter>
+    </form>
+  );
+};
+
 const LotesPage = () => {
   const { toast } = useToast();
   const [lotes, setLotes] = useState([]);
   const [ranchos, setRanchos] = useState([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingLote, setEditingLote] = useState(null);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -343,6 +513,37 @@ const LotesPage = () => {
     }
   };
 
+  // Función para asignar animales a lote
+  const handleAssignAnimals = async (loteId, animalIds) => {
+    try {
+      await animalService.asignarAnimalesALote(loteId, animalIds);
+      toast({ title: "Éxito", description: "Animales asignados correctamente" });
+      fetchLotes(); // Actualizar lista de lotes
+      setIsAssignDialogOpen(false);
+    } catch (error) {
+      toast({ 
+        title: "Error", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    }
+  };
+
+  // Función para eliminar animal de un lote
+  const handleRemoveAnimal = async (animalId) => {
+    try {
+      await animalService.eliminarAnimalDeLote(animalId);
+      toast({ title: "Éxito", description: "Animal eliminado del lote correctamente" });
+      fetchLotes(); // Recargar los lotes
+    } catch (error) {
+      toast({ 
+        title: "Error", 
+        description: error.message, 
+        variant: "destructive" 
+      });
+    }
+  };
+
   useEffect(() => {
     if (token) {
       fetchRanchos();
@@ -389,33 +590,58 @@ const LotesPage = () => {
         <h1 className="text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
           Gestión de Lotes
         </h1>
-        <Dialog open={isFormOpen} onOpenChange={(isOpen) => {
-          setIsFormOpen(isOpen);
-          if (!isOpen) setEditingLote(null);
-        }}>
-          <DialogTrigger asChild>
-            <Button className="bg-gradient-to-r from-primary to-green-400 hover:from-primary/90 hover:to-green-400/90 transition-all">
-              <PlusCircle className="mr-2 h-4 w-4" /> Nuevo Lote
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>{editingLote ? 'Editar Lote' : 'Registrar Nuevo Lote'}</DialogTitle>
-              <DialogDescription>
-                {editingLote ? `Actualiza los detalles del lote #${editingLote.remo}.` : 'Completa la información para registrar un nuevo lote en el sistema.'}
-              </DialogDescription>
-            </DialogHeader>
-            <LoteForm 
-              lote={editingLote}
-              ranchos={ranchos}
-              onSubmit={editingLote ? handleUpdateLote : handleCreateLote} 
-              onCancel={() => { 
-                setIsFormOpen(false); 
-                setEditingLote(null); 
-              }} 
-            />
-          </DialogContent>
-        </Dialog>
+        <div className="flex flex-wrap gap-2">
+          {/* Botón para Asignar Animales */}
+          <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
+            <DialogTrigger asChild>
+              <Button variant="outline" className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-500/90 hover:to-indigo-500/90 text-white">
+                <PlusCircle className="mr-2 h-4 w-4" /> Asignar Animales
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-xl">
+              <DialogHeader>
+                <DialogTitle>Asignar Animales a Lote</DialogTitle>
+                <DialogDescription>
+                  Seleccione un lote y los animales que desea asignar
+                </DialogDescription>
+              </DialogHeader>
+              <AssignAnimalsForm 
+                lotes={lotes.filter(l => l.estado === 'Disponible')} // Solo lotes disponibles
+                onAssign={handleAssignAnimals}
+                onCancel={() => setIsAssignDialogOpen(false)}
+              />
+            </DialogContent>
+          </Dialog>
+
+          {/* Botón para Nuevo Lote */}
+          <Dialog open={isFormOpen} onOpenChange={(isOpen) => {
+            setIsFormOpen(isOpen);
+            if (!isOpen) setEditingLote(null);
+          }}>
+            <DialogTrigger asChild>
+              <Button className="bg-gradient-to-r from-primary to-green-400 hover:from-primary/90 hover:to-green-400/90 transition-all">
+                <PlusCircle className="mr-2 h-4 w-4" /> Nuevo Lote
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-lg">
+              <DialogHeader>
+                <DialogTitle>{editingLote ? 'Editar Lote' : 'Registrar Nuevo Lote'}</DialogTitle>
+                <DialogDescription>
+                  {editingLote ? `Actualiza los detalles del lote #${editingLote.remo}.` : 'Completa la información para registrar un nuevo lote en el sistema.'}
+                </DialogDescription>
+              </DialogHeader>
+              <LoteForm 
+                lote={editingLote}
+                ranchos={ranchos}
+                onSubmit={editingLote ? handleUpdateLote : handleCreateLote} 
+                onCancel={() => { 
+                  setIsFormOpen(false); 
+                  setEditingLote(null); 
+                }} 
+              />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <Card className="bg-card/60 backdrop-blur-md p-4">
@@ -482,6 +708,7 @@ const LotesPage = () => {
                     setIsFormOpen(true);
                   }}
                   onDelete={handleDeleteLote}
+                  onRemoveAnimal={handleRemoveAnimal}
                 />
               ))}
             </div>
