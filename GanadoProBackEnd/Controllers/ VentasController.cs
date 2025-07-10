@@ -34,6 +34,29 @@ namespace GanadoProBackEnd.Controllers
             return ventas.Select(v => MapToDto(v)).ToList();
         }
 
+        // GET: api/Ventas/LotesVendidos
+        [HttpGet("LotesVendidos")]
+        public async Task<ActionResult<IEnumerable<LoteVendidoDto>>> GetLotesVendidos()
+        {
+            var lotesVendidos = await _context.Lotes
+                .Include(l => l.Rancho)
+                .Include(l => l.Cliente)
+                .Where(l => l.Estado == "Vendido")
+                .OrderByDescending(l => l.Fecha_Salida)
+                .ToListAsync();
+
+            return lotesVendidos.Select(l => new LoteVendidoDto
+            {
+                Id_Lote = l.Id_Lote,
+                Nombre = l.Remo.ToString(),
+                REMO = l.Remo,
+                Comunidad = l.Rancho?.Ubicacion ?? "",
+                UPP_Cliente = l.Cliente?.Upp ?? "",
+                Nombre_Cliente = l.Cliente?.Name ?? "",
+                Fecha_Venta = l.Fecha_Salida ?? DateTime.MinValue
+            }).ToList();
+        }
+
         // POST: api/Ventas
         [HttpPost]
         public async Task<ActionResult<VentaResponseDto>> ProgramarVenta([FromBody] CreateVentaDto ventaDto)
@@ -203,15 +226,10 @@ namespace GanadoProBackEnd.Controllers
             var animales = await _context.Animales
                 .Include(a => a.Lote)
                     .ThenInclude(l => l.Rancho)
+                .Include(a => a.Lote)
+                    .ThenInclude(l => l.Cliente)
                 .Where(a => a.Estado == "Vendido")
                 .ToListAsync();
-
-            // Obtener los IDs de cliente únicos
-            var clienteIds = animales.Select(a => a.Id_Cliente).Where(id => id != null).Distinct().ToList();
-            var clientes = await _context.Clientes
-                .Where(c => clienteIds.Contains(c.Id_Cliente))
-                .ToDictionaryAsync(c => c.Id_Cliente, c => c.Upp);
-
             var animalesVendidos = animales.Select(a => new AnimalVendidoDto
             {
                 Id_Animal = a.Id_Animal,
@@ -223,9 +241,10 @@ namespace GanadoProBackEnd.Controllers
                 FechaSalida = a.FechaSalida,
                 Estado = a.Estado,
                 Id_Lote = a.Lote?.Id_Lote,
-                NombreLote = a.Lote?.Remo.ToString() ?? "",
+                // NombreLote = a.Lote?.Nombre ?? "", // Removed because 'Nombre' does not exist in 'Lote'
+                NombreLote = "", // Or replace with an existing property, e.g., a.Lote?.Remo.ToString() ?? ""
                 Comunidad = a.Lote?.Rancho?.Ubicacion ?? "",
-                UPP_Cliente = (a.Id_Cliente != null && clientes.ContainsKey(a.Id_Cliente.Value)) ? clientes[a.Id_Cliente.Value] : ""
+                UPP_Cliente = a.Lote?.Cliente?.Upp ?? ""
             }).ToList();
 
             return Ok(animalesVendidos);
@@ -365,6 +384,18 @@ namespace GanadoProBackEnd.Controllers
         public int Id_Lote { get; set; }
         public int REMO { get; set; }
         public string Comunidad { get; set; } = "";
+    }
+
+    // Nuevo DTO para lotes vendidos
+    public class LoteVendidoDto
+    {
+        public int Id_Lote { get; set; }
+        public string Nombre { get; set; } = "";
+        public int REMO { get; set; }
+        public string Comunidad { get; set; } = "";
+        public string UPP_Cliente { get; set; } = "";
+        public string Nombre_Cliente { get; set; } = "";
+        public DateTime Fecha_Venta { get; set; }
     }
 
     public class AnimalVendidoDto
