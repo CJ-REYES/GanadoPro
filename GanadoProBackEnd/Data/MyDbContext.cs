@@ -177,7 +177,7 @@ namespace GanadoProBackEnd.Data
                     );
             });
 
-            
+
             
         }
     }
