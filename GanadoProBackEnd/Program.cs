@@ -7,6 +7,7 @@ using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Diagnostics;
 using System.Text.Json;
 using Microsoft.OpenApi.Models;
+using GanadoProBackEnd.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -102,6 +103,9 @@ builder.Services.AddControllers()
     });
 
 builder.Services.AddAuthorization();
+
+// Registrar el servicio en segundo plano
+builder.Services.AddHostedService<VentaBackgroundService>();
 
 var app = builder.Build();
 
