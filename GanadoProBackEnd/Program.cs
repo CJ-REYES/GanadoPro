@@ -45,11 +45,21 @@ builder.Services.AddSwaggerGen(c =>
     });
 });
 
-// Configurar conexión a base de datos
+// Configurar conexión a base de datos con reintentos
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<MyDbContext>(options =>
-    options.UseMySql(connectionString, ServerVersion.AutoDetect(connectionString))
-        .LogTo(Console.WriteLine, LogLevel.Information));
+{
+    options.UseMySql(connectionString, 
+        ServerVersion.AutoDetect(connectionString),
+        mysqlOptions =>
+        {
+            mysqlOptions.EnableRetryOnFailure(
+                maxRetryCount: 5,
+                maxRetryDelay: TimeSpan.FromSeconds(10),
+                errorNumbersToAdd: null);
+        });
+    options.LogTo(Console.WriteLine, LogLevel.Information);
+});
 
 // Configurar CORS
 builder.Services.AddCors(options =>
@@ -59,12 +69,12 @@ builder.Services.AddCors(options =>
         policy.WithOrigins("http://localhost:5173")
               .AllowAnyHeader()
               .AllowAnyMethod()
-              .AllowCredentials(); // ¡IMPORTANTE! Permite enviar credenciales
+              .AllowCredentials();
     });
 });
 
 // Configurar autenticación JWT
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme) // Simplificado
+builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
@@ -126,20 +136,19 @@ app.UseExceptionHandler(errorApp =>
     });
 });
 
-// Activar Swagger para todos los entornos
+// Activar Swagger
 app.UseSwagger();
 app.UseSwaggerUI();
 
 app.UseHttpsRedirection();
 
-// ORDEN CRÍTICO DE MIDDLEWARES (CORREGIDO)
+// ORDEN CORRECTO DE MIDDLEWARES
 app.UseRouting();
-app.UseCors("AllowFrontend"); // CORS debe estar después de Routing
-app.UseAuthentication();      // Autenticación antes de Autorización
-app.UseAuthorization();       // Autorización antes de los endpoints
+app.UseCors("AllowFrontend");
+app.UseAuthentication();
+app.UseAuthorization();
 
 app.UseStaticFiles();
-
 app.MapControllers();
 
 app.Run();

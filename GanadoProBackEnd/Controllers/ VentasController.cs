@@ -7,6 +7,7 @@ using GanadoProBackEnd.DTOs;
 using System.Linq;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using System;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -19,8 +20,8 @@ namespace GanadoProBackEnd.Controllers
 
         public VentasController(MyDbContext context) => _context = context;
 
-        // Método reutilizable para actualizar estado de venta
-        private async Task ActualizarEstadoVenta(Venta venta)
+        // Método estático reutilizable para actualizar estado de venta
+        public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
         {
             if (venta.Estado == "Programada" && venta.FechaSalida <= DateTime.Today)
             {
@@ -39,7 +40,7 @@ namespace GanadoProBackEnd.Controllers
                         animal.Id_Cliente = venta.Id_Cliente;
                     }
                 }
-                await _context.SaveChangesAsync();
+                await context.SaveChangesAsync();
             }
         }
 
@@ -72,7 +73,7 @@ namespace GanadoProBackEnd.Controllers
 
             foreach (var venta in ventasPendientes)
             {
-                await ActualizarEstadoVenta(venta);
+                await ActualizarEstadoVenta(_context, venta);
             }
         }
 
@@ -96,7 +97,7 @@ namespace GanadoProBackEnd.Controllers
                 UPP_Cliente = l.Cliente?.Upp ?? "",
                 Nombre_Cliente = l.Cliente?.Name ?? "",
                 Fecha_Venta = l.Fecha_Salida ?? DateTime.MinValue,
-                Estado = l.Estado // Incluir estado
+                Estado = l.Estado
             }).ToList();
         }
 
@@ -112,7 +113,7 @@ namespace GanadoProBackEnd.Controllers
             if (cliente == null)
                 return BadRequest("El cliente no existe");
 
-            // Validar que la UPP pertenece a un cliente (rol "Cliente")
+            // Validar que la UPP pertenece a un cliente
             if (cliente.Rol != "Cliente")
                 return BadRequest("La UPP proporcionada no pertenece a un cliente");
 
@@ -132,7 +133,7 @@ namespace GanadoProBackEnd.Controllers
             if (!validationResult.IsValid)
                 return BadRequest(validationResult.ErrorMessage);
 
-            // Actualizar lotes y animales con fecha de salida y cliente
+            // Actualizar lotes y animales
             foreach (var lote in lotes)
             {
                 lote.Fecha_Salida = ventaDto.FechaSalida;
@@ -164,8 +165,8 @@ namespace GanadoProBackEnd.Controllers
             _context.Ventas.Add(venta);
             await _context.SaveChangesAsync();
 
-            // Verificar si la fecha es pasada y actualizar estado si es necesario
-            await ActualizarEstadoVenta(venta);
+            // Verificar si la fecha es pasada y actualizar estado
+            await ActualizarEstadoVenta(_context, venta);
 
             var ventaConRelaciones = await _context.Ventas
                 .Include(v => v.Cliente)
@@ -194,7 +195,6 @@ namespace GanadoProBackEnd.Controllers
             if (venta.Estado != "Programada")
                 return BadRequest("Solo se pueden modificar ventas en estado 'Programada'");
 
-            // Guardar la fecha original para comparar
             var fechaOriginal = venta.FechaSalida;
             
             // Actualizar propiedades
@@ -219,7 +219,7 @@ namespace GanadoProBackEnd.Controllers
             // Si la fecha cambió a una pasada, actualizar estado
             if (fechaOriginal != ventaDto.FechaSalida && ventaDto.FechaSalida <= DateTime.Today)
             {
-                await ActualizarEstadoVenta(venta);
+                await ActualizarEstadoVenta(_context, venta);
             }
 
             return NoContent();
@@ -276,8 +276,7 @@ namespace GanadoProBackEnd.Controllers
             // Actualizar estado si es necesario
             if (venta != null && venta.Estado == "Programada" && venta.FechaSalida <= DateTime.Today)
             {
-                await ActualizarEstadoVenta(venta);
-                // Recargar la venta después de actualizar
+                await ActualizarEstadoVenta(_context, venta);
                 venta = await _context.Ventas
                     .Include(v => v.Cliente)
                     .Include(v => v.LotesVendidos)
@@ -319,11 +318,10 @@ namespace GanadoProBackEnd.Controllers
             return Ok(animalesVendidos);
         }
 
-        // GET: api/Ventas/VentasCompletadas (Ventas con estado completada/vendido)
+        // GET: api/Ventas/VentasCompletadas
         [HttpGet("VentasCompletadas")]
         public async Task<ActionResult<IEnumerable<VentaCompletadaDto>>> GetVentasCompletadas()
         {
-            // Asegurarse de actualizar ventas pendientes primero
             await ActualizarVentasPendientes();
             
             var ventasCompletadas = await _context.Ventas
@@ -342,7 +340,7 @@ namespace GanadoProBackEnd.Controllers
                 FechaSalida = v.FechaSalida ?? DateTime.MinValue,
                 FolioGuiaRemo = v.FolioGuiaRemo ?? "",
                 TipoVenta = v.TipoVenta,
-                Estado = v.Estado, // Incluir estado
+                Estado = v.Estado,
                 Cliente = v.Cliente?.Name ?? "",
                 UPP = v.UPP ?? "",
                 Lotes = v.LotesVendidos?.Select(l => new LoteVendidoInfoDto
@@ -351,7 +349,7 @@ namespace GanadoProBackEnd.Controllers
                     REMO = l.Remo,
                     Comunidad = l.Rancho?.Ubicacion ?? "",
                     CantidadAnimales = l.Animales?.Count ?? 0,
-                    Estado = l.Estado // Incluir estado del lote
+                    Estado = l.Estado
                 }).ToList() ?? new List<LoteVendidoInfoDto>()
             }).ToList();
         }
@@ -363,7 +361,7 @@ namespace GanadoProBackEnd.Controllers
                 Id_Venta = venta.Id_Venta,
                 FechaSalida = venta.FechaSalida ?? DateTime.MinValue,
                 FolioGuiaRemo = venta.FolioGuiaRemo ?? "",
-                Estado = venta.Estado, // Estado actual
+                Estado = venta.Estado,
                 TipoVenta = venta.TipoVenta,
                 Cliente = venta.Cliente?.Name ?? "",
                 UPP = venta.UPP ?? "",
@@ -372,7 +370,7 @@ namespace GanadoProBackEnd.Controllers
                     Id_Lote = l.Id_Lote,
                     REMO = l.Remo,
                     Comunidad = l.Rancho?.Ubicacion ?? "",
-                    Estado = l.Estado // Incluir estado del lote
+                    Estado = l.Estado
                 }).ToList() ?? new List<LoteInfoDto>()
             };
         }
@@ -440,7 +438,7 @@ namespace GanadoProBackEnd.Controllers
         public int Id_Venta { get; set; }
         public DateTime FechaSalida { get; set; }
         public string FolioGuiaRemo { get; set; } = "";
-        public string Estado { get; set; } = ""; // Estado actual de la venta
+        public string Estado { get; set; } = "";
         public string Cliente { get; set; } = "";
         public string UPP { get; set; } = "";
         public TipoVenta TipoVenta { get; set; }
@@ -452,7 +450,7 @@ namespace GanadoProBackEnd.Controllers
         public int Id_Lote { get; set; }
         public int REMO { get; set; }
         public string Comunidad { get; set; } = "";
-        public string Estado { get; set; } = ""; // Estado del lote
+        public string Estado { get; set; } = "";
     }
 
     public class LoteVendidoDto
@@ -464,7 +462,7 @@ namespace GanadoProBackEnd.Controllers
         public string UPP_Cliente { get; set; } = "";
         public string Nombre_Cliente { get; set; } = "";
         public DateTime Fecha_Venta { get; set; }
-        public string Estado { get; set; } = ""; // Estado del lote
+        public string Estado { get; set; } = "";
     }
 
     public class AnimalVendidoDto
@@ -483,14 +481,13 @@ namespace GanadoProBackEnd.Controllers
         public string UPP_Cliente { get; set; } = "";
     }
 
-    // DTOs para ventas completadas
     public class VentaCompletadaDto
     {
         public int Id_Venta { get; set; }
         public DateTime FechaSalida { get; set; }
         public string FolioGuiaRemo { get; set; } = "";
         public TipoVenta TipoVenta { get; set; }
-        public string Estado { get; set; } = ""; // Estado de la venta
+        public string Estado { get; set; } = "";
         public string Cliente { get; set; } = "";
         public string UPP { get; set; } = "";
         public List<LoteVendidoInfoDto> Lotes { get; set; } = new List<LoteVendidoInfoDto>();
@@ -502,7 +499,7 @@ namespace GanadoProBackEnd.Controllers
         public int REMO { get; set; }
         public string Comunidad { get; set; } = "";
         public int CantidadAnimales { get; set; }
-        public string Estado { get; set; } = ""; // Estado del lote
+        public string Estado { get; set; } = "";
     }
 
     public class ValidationResult
