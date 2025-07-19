@@ -339,7 +339,8 @@ namespace GanadoProBackEnd.Controllers
                 Id_Venta = v.Id_Venta,
                 FechaSalida = v.FechaSalida ?? DateTime.MinValue,
                 FolioGuiaRemo = v.FolioGuiaRemo ?? "",
-                TipoVenta = v.TipoVenta,
+                // Convertir tipo de venta a texto
+                TipoVenta = v.TipoVenta == TipoVenta.Internacional ? "Internacional" : "Nacional",
                 Estado = v.Estado,
                 Cliente = v.Cliente?.Name ?? "",
                 UPP = v.UPP ?? "",
@@ -349,8 +350,37 @@ namespace GanadoProBackEnd.Controllers
                     REMO = l.Remo,
                     Comunidad = l.Rancho?.Ubicacion ?? "",
                     CantidadAnimales = l.Animales?.Count ?? 0,
-                    Estado = l.Estado
+                    Estado = l.Estado,
+                    // Cargar animales directamente para evitar llamada adicional
+                    Animales = l.Animales?.Select(a => new AnimalVendidoDto
+                    {
+                        Id_Animal = a.Id_Animal,
+                        Arete = a.Arete,
+                        Peso = a.Peso,
+                        Sexo = a.Sexo,
+                        Raza = a.Raza,
+                        FechaSalida = a.FechaSalida
+                    }).ToList() ?? new List<AnimalVendidoDto>()
                 }).ToList() ?? new List<LoteVendidoInfoDto>()
+            }).ToList();
+        }
+
+        // GET: api/Ventas/Lotes/{id}/Animales
+        [HttpGet("Lotes/{id}/Animales")]
+        public async Task<ActionResult<IEnumerable<AnimalVendidoDto>>> GetAnimalesPorLote(int id)
+        {
+            var animales = await _context.Animales
+                .Where(a => a.Id_Lote == id && a.Estado == "Vendido")
+                .ToListAsync();
+
+            return animales.Select(a => new AnimalVendidoDto
+            {
+                Id_Animal = a.Id_Animal,
+                Arete = a.Arete,
+                Peso = a.Peso,
+                Sexo = a.Sexo,
+                Raza = a.Raza,
+                FechaSalida = a.FechaSalida
             }).ToList();
         }
 
@@ -486,7 +516,7 @@ namespace GanadoProBackEnd.Controllers
         public int Id_Venta { get; set; }
         public DateTime FechaSalida { get; set; }
         public string FolioGuiaRemo { get; set; } = "";
-        public TipoVenta TipoVenta { get; set; }
+        public string TipoVenta { get; set; } = "";
         public string Estado { get; set; } = "";
         public string Cliente { get; set; } = "";
         public string UPP { get; set; } = "";
@@ -500,6 +530,7 @@ namespace GanadoProBackEnd.Controllers
         public string Comunidad { get; set; } = "";
         public int CantidadAnimales { get; set; }
         public string Estado { get; set; } = "";
+        public List<AnimalVendidoDto> Animales { get; set; } = new List<AnimalVendidoDto>();
     }
 
     public class ValidationResult

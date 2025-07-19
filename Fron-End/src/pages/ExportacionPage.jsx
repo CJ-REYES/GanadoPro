@@ -1,105 +1,307 @@
+// src/pages/ExportacionPage.jsx
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription 
+} from '@/components/ui/card';
+import { 
+  Table, 
+  TableBody, 
+  TableCell, 
+  TableHead, 
+  TableHeader, 
+  TableRow 
+} from '@/components/ui/table';
+import { ChevronDown, ChevronUp, Ghost } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
+import { useToast } from '@/components/ui/use-toast';
+import * as ventasService from '@/services/ventasService';
 
-    import React from 'react';
-    import { motion } from 'framer-motion';
-    import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-    import { Button } from '@/components/ui/button';
-    import { Truck, FilePlus, ListChecks, AlertTriangle, CheckSquare } from 'lucide-react';
-    import {
-      Table,
-      TableBody,
-      TableCell,
-      TableHead,
-      TableHeader,
-      TableRow,
-    } from "@/components/ui/table";
-    import { cn } from '@/lib/utils';
+const ExportacionPage = () => {
+  const { toast } = useToast();
+  const [ventas, setVentas] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [expandedVenta, setExpandedVenta] = useState(null);
+  const [expandedLotes, setExpandedLotes] = useState({});
+  const [animalesLoading, setAnimalesLoading] = useState({});
 
-    const exportacionesData = [
-      { id: 'EXP-001', destino: 'EE.UU.', fechaSalidaEstimada: '2024-06-15', cantidad: 50, raza: 'Angus', estado: 'En Preparación Documental', alerta: null },
-      { id: 'EXP-002', destino: 'Canadá', fechaSalidaEstimada: '2024-06-20', cantidad: 30, raza: 'Hereford', estado: 'Cuarentena Iniciada', alerta: 'Vacunación pendiente' },
-      { id: 'EXP-003', destino: 'China', fechaSalidaEstimada: '2024-07-01', cantidad: 100, raza: 'Brangus', estado: 'Listo para Embarque', alerta: null },
-      { id: 'EXP-004', destino: 'Japón', fechaSalidaEstimada: '2024-07-10', cantidad: 20, raza: 'Wagyu (Referencia)', estado: 'Documentación Aprobada', alerta: null },
-    ];
-
-    const getExportStatusIconAndColor = (status) => {
-      if (status.includes('Preparación')) return { icon: <FilePlus className="h-4 w-4 mr-2 text-blue-500" />, color: 'text-blue-500 bg-blue-500/10' };
-      if (status.includes('Cuarentena')) return { icon: <ListChecks className="h-4 w-4 mr-2 text-yellow-600" />, color: 'text-yellow-600 bg-yellow-600/10' };
-      if (status.includes('Listo') || status.includes('Aprobada')) return { icon: <CheckSquare className="h-4 w-4 mr-2 text-green-500" />, color: 'text-green-500 bg-green-500/10' };
-      return { icon: <Truck className="h-4 w-4 mr-2 text-gray-500" />, color: 'text-gray-500 bg-gray-500/10' };
+  useEffect(() => {
+    const fetchVentas = async () => {
+      try {
+        setLoading(true);
+        const ventasData = await ventasService.getVentasCompletadas();
+        setVentas(ventasData);
+      } catch (error) {
+        toast({
+          title: "Error al cargar ventas",
+          description: error.message,
+          variant: "destructive",
+        });
+      } finally {
+        setLoading(false);
+      }
     };
-    
-    const ExportacionPage = () => {
-      return (
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.5 }}
-          className="space-y-6"
-        >
-          <div className="flex flex-col md:flex-row justify-between items-center gap-4">
-            <h1 className="text-3xl font-bold tracking-tight text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
-              Inventario de Ganado para Exportación
-            </h1>
-            <Button className="bg-gradient-to-r from-primary to-green-400 hover:from-primary/90 hover:to-green-400/90 transition-all">
-              <Truck className="mr-2 h-4 w-4" /> Nueva Orden de Exportación
-            </Button>
-          </div>
 
-          <Card className="bg-card/80 backdrop-blur-sm">
-            <CardHeader>
-              <CardTitle className="text-xl text-foreground">Lotes de Exportación ({exportacionesData.length})</CardTitle>
-              <CardDescription>Seguimiento de los lotes de ganado destinados a la exportación.</CardDescription>
-            </CardHeader>
-            <CardContent>
+    fetchVentas();
+  }, []);
+
+  const toggleExpandVenta = (ventaId) => {
+    setExpandedVenta(expandedVenta === ventaId ? null : ventaId);
+    setExpandedLotes({});
+  };
+
+  const toggleExpandLote = async (ventaId, loteId) => {
+    const key = `${ventaId}-${loteId}`;
+    const isExpanded = expandedLotes[key];
+    
+    // Crear nuevo objeto para no mutar el estado directamente
+    const newExpandedLotes = { ...expandedLotes };
+    
+    if (isExpanded) {
+      delete newExpandedLotes[key];
+    } else {
+      newExpandedLotes[key] = true;
+      
+      // Si no hemos cargado los animales aún, los obtenemos
+      const venta = ventas.find(v => v.id_Venta === ventaId);
+      const lote = venta?.lotes.find(l => l.id_Lote === loteId);
+      
+      if (lote && !lote.animales) {
+        try {
+          setAnimalesLoading(prev => ({ ...prev, [key]: true }));
+          const animales = await ventasService.getAnimalesLote(loteId);
+          
+          // Actualizamos el estado con los nuevos animales
+          setVentas(prevVentas => 
+            prevVentas.map(venta => {
+              if (venta.id_Venta === ventaId) {
+                const updatedLotes = venta.lotes.map(lote => 
+                  lote.id_Lote === loteId 
+                    ? { ...lote, animales } 
+                    : lote
+                );
+                return { ...venta, lotes: updatedLotes };
+              }
+              return venta;
+            })
+          );
+        } catch (error) {
+          toast({
+            title: "Error al cargar animales",
+            description: error.message,
+            variant: "destructive",
+          });
+        } finally {
+          setAnimalesLoading(prev => ({ ...prev, [key]: false }));
+        }
+      }
+    }
+    
+    setExpandedLotes(newExpandedLotes);
+  };
+
+  return (
+    <motion.div
+      className="space-y-6"
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.5 }}
+    >
+      <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
+        Órdenes de Venta Completadas
+      </h1>
+
+      <Card className="bg-card/70 backdrop-blur-sm">
+        <CardHeader>
+          <CardTitle className="text-xl">Ventas Completadas</CardTitle>
+          <CardDescription>Todas las ventas finalizadas con sus lotes y animales</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {loading ? (
+            <div className="space-y-4">
+              {[...Array(5)].map((_, i) => (
+                <Skeleton key={i} className="h-16 w-full rounded-md" />
+              ))}
+            </div>
+          ) : ventas.length === 0 ? (
+            <div className="text-center py-10 text-muted-foreground">
+              <Ghost className="mx-auto h-12 w-12 mb-4" />
+              <p className="font-medium">No hay ventas completadas registradas.</p>
+              <p className="text-sm mt-2">
+                Las ventas aparecerán aquí cuando se completen los procesos de venta.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-4">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>ID Lote</TableHead>
-                    <TableHead>Destino</TableHead>
-                    <TableHead>Fecha Salida Est.</TableHead>
-                    <TableHead>Cantidad</TableHead>
-                    <TableHead>Raza Predominante</TableHead>
-                    <TableHead>Estado</TableHead>
-                    <TableHead>Alerta</TableHead>
-                    <TableHead className="text-right">Acciones</TableHead>
+                    <TableHead>ID Venta</TableHead>
+                    <TableHead>Fecha</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Lotes</TableHead>
+                    <TableHead>Animales</TableHead>
+                    <TableHead>Tipo</TableHead>
+                    <TableHead>Acciones</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {exportacionesData.map((lote) => {
-                    const { icon, color } = getExportStatusIconAndColor(lote.estado);
-                    return (
-                    <TableRow key={lote.id} className="hover:bg-muted/30 transition-colors">
-                      <TableCell className="font-medium">{lote.id}</TableCell>
-                      <TableCell>{lote.destino}</TableCell>
-                      <TableCell>{lote.fechaSalidaEstimada}</TableCell>
-                      <TableCell>{lote.cantidad}</TableCell>
-                      <TableCell>{lote.raza}</TableCell>
-                      <TableCell>
-                        <span className={cn("px-2 py-1 text-xs rounded-full flex items-center", color)}>
-                          {icon} {lote.estado}
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        {lote.alerta ? (
-                          <span className="flex items-center text-red-500 text-xs">
-                            <AlertTriangle className="h-4 w-4 mr-1" /> {lote.alerta}
+                  {ventas.map((venta) => (
+                    <React.Fragment key={venta.id_Venta}>
+                      <TableRow>
+                        <TableCell className="font-semibold">OV-{venta.id_Venta}</TableCell>
+                        <TableCell>
+                          {new Date(venta.fechaSalida).toLocaleDateString()}
+                        </TableCell>
+                        <TableCell>
+                          <div className="font-medium">{venta.cliente}</div>
+                          <div className="text-xs text-muted-foreground">{venta.upp}</div>
+                        </TableCell>
+                        <TableCell>{venta.lotes.length}</TableCell>
+                        <TableCell>
+                          {venta.lotes.reduce((sum, lote) => sum + lote.cantidadAnimales, 0)}
+                        </TableCell>
+                        <TableCell>
+                          <span className={`px-2 py-1 rounded-full text-xs ${
+                            venta.tipoVenta === 'Internacional' 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : 'bg-green-100 text-green-800'
+                          }`}>
+                            {venta.tipoVenta}
                           </span>
-                        ) : (
-                          <span className="text-green-500 text-xs">Sin alertas</span>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <Button variant="ghost" size="sm">Gestionar Lote</Button>
-                      </TableCell>
-                    </TableRow>
-                  )})}
+                        </TableCell>
+                        <TableCell>
+                          <Button 
+                            variant="outline" 
+                            size="sm"
+                            onClick={() => toggleExpandVenta(venta.id_Venta)}
+                          >
+                            {expandedVenta === venta.id_Venta ? (
+                              <>
+                                <ChevronUp className="mr-1 h-4 w-4" /> Ocultar
+                              </>
+                            ) : (
+                              <>
+                                <ChevronDown className="mr-1 h-4 w-4" /> Detalles
+                              </>
+                            )}
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                      
+                      {expandedVenta === venta.id_Venta && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="p-0">
+                            <div className="p-4 bg-gray-50 dark:bg-gray-800">
+                              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                                <div>
+                                  <h4 className="font-semibold text-sm mb-1">Folio Guía Remo</h4>
+                                  <p>{venta.folioGuiaRemo}</p>
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-sm mb-1">Fecha de Salida</h4>
+                                  <p>{new Date(venta.fechaSalida).toLocaleDateString()}</p>
+                                </div>
+                                <div>
+                                  <h4 className="font-semibold text-sm mb-1">Estado</h4>
+                                  <p className="text-green-600 font-medium">{venta.estado}</p>
+                                </div>
+                              </div>
+                              
+                              <h4 className="font-semibold mb-3">Lotes Vendidos</h4>
+                              <div className="space-y-3">
+                                {venta.lotes.map((lote) => (
+                                  <div 
+                                    key={lote.id_Lote} 
+                                    className="border rounded-lg overflow-hidden"
+                                  >
+                                    <div
+                                      className="flex justify-between items-center p-4 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700"
+                                      onClick={() => toggleExpandLote(venta.id_Venta, lote.id_Lote)}
+                                    >
+                                      <div className="space-y-1">
+                                        <div className="font-semibold">Lote #{lote.remO}</div>
+                                        <div className="text-sm text-muted-foreground">
+                                          Comunidad: {lote.comunidad} | Animales: {lote.cantidadAnimales}
+                                        </div>
+                                      </div>
+                                      <div>
+                                        <Button variant="ghost" size="icon">
+                                          {expandedLotes[`${venta.id_Venta}-${lote.id_Lote}`] ? (
+                                            <ChevronUp className="h-5 w-5" />
+                                          ) : (
+                                            <ChevronDown className="h-5 w-5" />
+                                          )}
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    
+                                    {expandedLotes[`${venta.id_Venta}-${lote.id_Lote}`] && (
+                                      <div className="border-t bg-white dark:bg-gray-900">
+                                        {animalesLoading[`${venta.id_Venta}-${lote.id_Lote}`] ? (
+                                          <div className="p-4 flex justify-center">
+                                            <Skeleton className="h-8 w-full max-w-md" />
+                                          </div>
+                                        ) : (
+                                          <div className="p-4 overflow-x-auto">
+                                            {lote.animales?.length > 0 ? (
+                                              <Table>
+                                                <TableHeader>
+                                                  <TableRow>
+                                                    <TableHead>ID</TableHead>
+                                                    <TableHead>Arete</TableHead>
+                                                    <TableHead>Raza</TableHead>
+                                                    <TableHead>Peso</TableHead>
+                                                    <TableHead>Sexo</TableHead>
+                                                    <TableHead>Fecha salida</TableHead>
+                                                  </TableRow>
+                                                </TableHeader>
+                                                <TableBody>
+                                                  {lote.animales.map((animal) => (
+                                                    <TableRow key={animal.id_Animal}>
+                                                      <TableCell>{animal.id_Animal}</TableCell>
+                                                      <TableCell>{animal.arete}</TableCell>
+                                                      <TableCell>{animal.raza}</TableCell>
+                                                      <TableCell>{animal.peso} kg</TableCell>
+                                                      <TableCell>{animal.sexo}</TableCell>
+                                                      <TableCell>
+                                                        {new Date(animal.fechaSalida).toLocaleDateString()}
+                                                      </TableCell>
+                                                    </TableRow>
+                                                  ))}
+                                                </TableBody>
+                                              </Table>
+                                            ) : (
+                                              <p className="text-center text-muted-foreground py-4">
+                                                No hay animales registrados en este lote
+                                              </p>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </React.Fragment>
+                  ))}
                 </TableBody>
               </Table>
-            </CardContent>
-          </Card>
-        </motion.div>
-      );
-    };
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+};
 
-    export default ExportacionPage;
-  
+export default ExportacionPage;
