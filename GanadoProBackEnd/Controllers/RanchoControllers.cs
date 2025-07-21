@@ -8,6 +8,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
+using System.Security.Claims;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -25,7 +26,6 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: Todos los ranchos
         [HttpGet]
-      
         public async Task<ActionResult<IEnumerable<RanchoResponseDto>>> GetRanchos()
         {
             return await _context.Ranchos
@@ -45,7 +45,6 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: Rancho por ID
         [HttpGet("{id}")]
-   
         public async Task<ActionResult<RanchoResponseDto>> GetRancho(int id)
         {
             var rancho = await _context.Ranchos
@@ -66,9 +65,33 @@ namespace GanadoProBackEnd.Controllers
             return rancho != null ? rancho : NotFound();
         }
 
+        // GET: Ranchos del usuario actual
+        [HttpGet("mis-ranchos")]
+        public async Task<ActionResult<IEnumerable<RanchoResponseDto>>> GetRanchosByUser()
+        {
+            // Obtener ID de usuario autenticado
+            var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
+            
+            var ranchos = await _context.Ranchos
+                .Where(r => r.Id_User == userId)
+                .Select(r => new RanchoResponseDto
+                {
+                    Id_Rancho = r.Id_Rancho,
+                    Id_User = r.Id_User,
+                    NombreRancho = r.NombreRancho,
+                    Ubicacion = r.Ubicacion,
+                    Propietario = r.User.Name,
+                    Telefono = r.User.Telefono,
+                    Email = r.User.Email,
+                    TotalLotes = r.Lotes.Count
+                })
+                .ToListAsync();
+
+            return ranchos;
+        }
+
         // POST: Crear nuevo rancho
         [HttpPost]
- 
         public async Task<ActionResult<RanchoResponseDto>> CreateRancho([FromBody] CreateRanchoDto ranchoDto)
         {
             // Verificar que el usuario exista
@@ -113,7 +136,6 @@ namespace GanadoProBackEnd.Controllers
 
         // PUT: Actualizar rancho
         [HttpPut("{id}")]
-    
         public async Task<IActionResult> UpdateRancho(int id, [FromBody] UpdateRanchoDto updateDto)
         {
             var rancho = await _context.Ranchos
@@ -153,7 +175,6 @@ namespace GanadoProBackEnd.Controllers
 
         // DELETE: Eliminar rancho
         [HttpDelete("{id}")]
-    
         public async Task<IActionResult> DeleteRancho(int id)
         {
             var rancho = await _context.Ranchos

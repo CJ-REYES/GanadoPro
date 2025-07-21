@@ -12,33 +12,43 @@ const fetchWithAuth = async (url, options = {}) => {
     headers['Authorization'] = `Bearer ${token}`;
   }
 
-  const response = await fetch(url, {
-    ...options,
-    headers,
-  });
+  try {
+    const response = await fetch(url, {
+      ...options,
+      headers,
+    });
 
-  if (!response.ok) {
-    let errorMessage = 'Error en la solicitud';
-    try {
-      const errorData = await response.json();
-      errorMessage = errorData.message || errorData.title || errorMessage;
-    } catch (e) {
-      errorMessage = `Error ${response.status}: ${response.statusText}`;
+    if (!response.ok) {
+      let errorMessage = 'Error en la solicitud';
+      try {
+        const errorData = await response.json();
+        errorMessage = errorData.message || errorData.title || errorMessage;
+      } catch (e) {
+        errorMessage = `Error ${response.status}: ${response.statusText}`;
+      }
+      throw new Error(errorMessage);
     }
-    throw new Error(errorMessage);
-  }
 
-  if (response.status === 204) {
-    return null;
-  }
+    if (response.status === 204) {
+      return null;
+    }
 
-  return response.json();
+    return response.json();
+  } catch (error) {
+    console.error('Fetch error:', error);
+    throw error;
+  }
 };
 
-// Transformar venta completada
+const safeDateParse = (dateString) => {
+  if (!dateString) return null;
+  const date = new Date(dateString);
+  return isNaN(date.getTime()) ? null : date;
+};
+
 const transformVentaCompletada = (venta) => ({
   id_Venta: venta.Id_Venta,
-  fechaSalida: new Date(venta.FechaSalida),
+  fechaSalida: safeDateParse(venta.FechaSalida) || new Date(),
   folioGuiaRemo: venta.FolioGuiaRemo,
   tipoVenta: venta.TipoVenta,
   estado: venta.Estado,
@@ -47,7 +57,6 @@ const transformVentaCompletada = (venta) => ({
   lotes: venta.Lotes.map(transformLoteVendidoInfo)
 });
 
-// Transformar información de lote vendido
 const transformLoteVendidoInfo = (lote) => ({
   id_Lote: lote.Id_Lote,
   remO: lote.REMO,
@@ -57,17 +66,33 @@ const transformLoteVendidoInfo = (lote) => ({
   animales: lote.Animales ? lote.Animales.map(transformAnimal) : []
 });
 
-// Transformar animal
 const transformAnimal = (animal) => ({
   id_Animal: animal.Id_Animal,
   arete: animal.Arete || "Sin arete",
   raza: animal.Raza || "Desconocida",
   peso: animal.Peso || 0,
   sexo: animal.Sexo || "Desconocido",
-  fechaSalida: animal.FechaSalida,
+  fechaSalida: safeDateParse(animal.FechaSalida)
 });
 
-// Obtener ventas completadas
+const transformOrdenVenta = (orden) => ({
+  id: orden.Id_Venta,
+  fechaSalida: new Date(orden.FechaSalida), // Conversión directa a Date
+  folioGuiaRemo: orden.FolioGuiaRemo,
+  tipoVenta: orden.TipoVenta === 0 ? 'Nacional' : 'Internacional',
+  cliente: orden.Cliente,
+  upp: orden.UPP,
+  estado: orden.Estado,
+  lotes: (orden.Lotes || []).map(lote => ({
+    id: lote.Id_Lote,
+    remO: lote.REMO,
+    comunidad: lote.Comunidad,
+    cantidadAnimales: lote.CantidadAnimales,
+  })),
+  totalAnimales: (orden.Lotes || []).reduce((sum, lote) => sum + (lote.CantidadAnimales || 0), 0)
+});
+
+
 export const getVentasCompletadas = async () => {
   try {
     const data = await fetchWithAuth(`${API_URL}/VentasCompletadas`);
@@ -78,7 +103,6 @@ export const getVentasCompletadas = async () => {
   }
 };
 
-// Obtener animales de un lote vendido
 export const getAnimalesLote = async (idLote) => {
   try {
     const data = await fetchWithAuth(`${API_URL}/Lotes/${idLote}/Animales`);
@@ -89,23 +113,96 @@ export const getAnimalesLote = async (idLote) => {
   }
 };
 
-// Obtener lotes vendidos (mantenido por compatibilidad)
-export const getLotesVendidos = async () => {
+export const getOrdenesVenta = async () => {
   try {
-    const data = await fetchWithAuth(`${API_URL}/LotesVendidos`);
-    return data.map(lote => ({
-      id_Lote: lote.Id_Lote,
-      nombre: lote.Nombre || "Sin nombre",
-      remO: lote.REMO,
-      comunidad: lote.Comunidad || "",
-      upp_Cliente: lote.UPP_Cliente || "",
-      nombre_Cliente: lote.Nombre_Cliente || "Sin cliente",
-      fecha_Venta: lote.Fecha_Venta,
-      animalesCount: lote.Animales?.length || 0,
-      animales: [],
-    }));
+    const data = await fetchWithAuth(API_URL);
+    return data.map(transformOrdenVenta);
   } catch (error) {
-    console.error('Error al obtener lotes vendidos:', error);
+    console.error('Error al obtener las órdenes de venta:', error);
+    throw error;
+  }
+};
+
+export const createOrdenVenta = async (ordenData) => {
+  try {
+    const tipoVentaNum = ordenData.ventaDto.tipoVenta;
+    
+    const response = await fetchWithAuth(API_URL, {
+      method: 'POST',
+      body: JSON.stringify({
+        FechaSalida: ordenData.ventaDto.fechaSalida.toISOString(),
+        FolioGuiaRemo: ordenData.ventaDto.folioGuiaRemo,
+        TipoVenta: tipoVentaNum,
+        LotesIds: ordenData.ventaDto.lotesIds,
+        Id_Cliente: ordenData.ventaDto.idCliente,
+        UPP: ordenData.ventaDto.upp,
+        Id_Rancho: ordenData.ventaDto.idRancho
+      })
+    });
+    
+    // Transformar respuesta
+    return {
+      ...response,
+      fechaSalida: new Date(response.FechaSalida),
+      tipoVenta: response.TipoVenta === 0 ? 'Nacional' : 'Internacional'
+    };
+  } catch (error) {
+    console.error('Error al crear la orden de venta:', error);
+    throw error;
+  }
+};
+
+export const updateOrdenVenta = async (id, ordenData) => {
+  try {
+    const response = await fetchWithAuth(`${API_URL}/${id}`, {
+      method: 'PUT',
+      body: JSON.stringify({
+        FechaSalida: ordenData.ventaDto.fechaSalida.toISOString(),
+        FolioGuiaRemo: ordenData.ventaDto.folioGuiaRemo,
+        TipoVenta: ordenData.ventaDto.tipoVenta
+      })
+    });
+    
+    // CORRECCIÓN: Manejar respuesta nula (204 No Content)
+    if (response === null) {
+      return null;
+    }
+    
+    return {
+      ...response,
+      fechaSalida: new Date(response.FechaSalida),
+      tipoVenta: response.TipoVenta === 0 ? 'Nacional' : 'Internacional'
+    };
+  } catch (error) {
+    console.error('Error al actualizar la orden de venta:', error);
+    throw error;
+  }
+};
+
+export const deleteOrdenVenta = async (id) => {
+  try {
+    await fetchWithAuth(`${API_URL}/${id}`, {
+      method: 'DELETE'
+    });
+    return true;
+  } catch (error) {
+    console.error('Error al eliminar la orden de venta:', error);
+    throw error;
+  }
+};
+
+export const getLotesDisponibles = async () => {
+  try {
+    const data = await fetchWithAuth(`${API_URL}/lotes-disponibles`);
+
+return data.map(lote => ({
+  id_Lote: lote.Id_Lote,
+  remo: lote.REMO || lote.remo, // Asegura compatibilidad
+  comunidad: lote.Comunidad,
+  cantidadAnimales: lote.CantidadAnimales
+}));
+  } catch (error) {
+    console.error('Error al obtener lotes disponibles:', error);
     throw error;
   }
 };

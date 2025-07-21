@@ -83,3 +83,9 @@ export const deleteRancho = async (id) => {
   });
   return id;
 };
+
+// Nueva función para obtener ranchos del usuario
+export const getRanchosByUser = async () => {
+  const data = await fetchWithAuth(`${API_URL}/mis-ranchos`);
+  return data.map(transformRancho);
+};

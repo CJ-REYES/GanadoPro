@@ -2,25 +2,17 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle, 
-  CardDescription 
+  Card, CardContent, CardHeader, CardTitle, CardDescription 
 } from '@/components/ui/card';
 import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from '@/components/ui/table';
 import { ChevronDown, ChevronUp, Ghost } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
 import * as ventasService from '@/services/ventasService';
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const ExportacionPage = () => {
   const { toast } = useToast();
@@ -29,6 +21,7 @@ const ExportacionPage = () => {
   const [expandedVenta, setExpandedVenta] = useState(null);
   const [expandedLotes, setExpandedLotes] = useState({});
   const [animalesLoading, setAnimalesLoading] = useState({});
+  const [filter, setFilter] = useState('todas');
 
   useEffect(() => {
     const fetchVentas = async () => {
@@ -59,7 +52,6 @@ const ExportacionPage = () => {
     const key = `${ventaId}-${loteId}`;
     const isExpanded = expandedLotes[key];
     
-    // Crear nuevo objeto para no mutar el estado directamente
     const newExpandedLotes = { ...expandedLotes };
     
     if (isExpanded) {
@@ -67,7 +59,6 @@ const ExportacionPage = () => {
     } else {
       newExpandedLotes[key] = true;
       
-      // Si no hemos cargado los animales aún, los obtenemos
       const venta = ventas.find(v => v.id_Venta === ventaId);
       const lote = venta?.lotes.find(l => l.id_Lote === loteId);
       
@@ -76,7 +67,6 @@ const ExportacionPage = () => {
           setAnimalesLoading(prev => ({ ...prev, [key]: true }));
           const animales = await ventasService.getAnimalesLote(loteId);
           
-          // Actualizamos el estado con los nuevos animales
           setVentas(prevVentas => 
             prevVentas.map(venta => {
               if (venta.id_Venta === ventaId) {
@@ -105,6 +95,11 @@ const ExportacionPage = () => {
     setExpandedLotes(newExpandedLotes);
   };
 
+  const filteredVentas = ventas.filter(venta => {
+    if (filter === 'todas') return true;
+    return venta.tipoVenta === (filter === 'nacionales' ? 'Nacional' : 'Internacional');
+  });
+
   return (
     <motion.div
       className="space-y-6"
@@ -112,9 +107,19 @@ const ExportacionPage = () => {
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.5 }}
     >
-      <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
-        Órdenes de Venta Completadas
-      </h1>
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-primary to-accent">
+          Órdenes de Venta Completadas
+        </h1>
+        
+        <Tabs value={filter} onValueChange={setFilter} className="w-fit">
+          <TabsList className="bg-muted/50">
+            <TabsTrigger value="todas">Todas</TabsTrigger>
+            <TabsTrigger value="nacionales">Nacionales</TabsTrigger>
+            <TabsTrigger value="internacionales">Internacionales</TabsTrigger>
+          </TabsList>
+        </Tabs>
+      </div>
 
       <Card className="bg-card/70 backdrop-blur-sm">
         <CardHeader>
@@ -128,7 +133,7 @@ const ExportacionPage = () => {
                 <Skeleton key={i} className="h-16 w-full rounded-md" />
               ))}
             </div>
-          ) : ventas.length === 0 ? (
+          ) : filteredVentas.length === 0 ? (
             <div className="text-center py-10 text-muted-foreground">
               <Ghost className="mx-auto h-12 w-12 mb-4" />
               <p className="font-medium">No hay ventas completadas registradas.</p>
@@ -151,12 +156,12 @@ const ExportacionPage = () => {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ventas.map((venta) => (
+                  {filteredVentas.map((venta) => (
                     <React.Fragment key={venta.id_Venta}>
                       <TableRow>
                         <TableCell className="font-semibold">OV-{venta.id_Venta}</TableCell>
                         <TableCell>
-                          {new Date(venta.fechaSalida).toLocaleDateString()}
+                          {venta.fechaSalida.toLocaleDateString()}
                         </TableCell>
                         <TableCell>
                           <div className="font-medium">{venta.cliente}</div>
@@ -205,7 +210,7 @@ const ExportacionPage = () => {
                                 </div>
                                 <div>
                                   <h4 className="font-semibold text-sm mb-1">Fecha de Salida</h4>
-                                  <p>{new Date(venta.fechaSalida).toLocaleDateString()}</p>
+                                  <p>{venta.fechaSalida.toLocaleDateString()}</p>
                                 </div>
                                 <div>
                                   <h4 className="font-semibold text-sm mb-1">Estado</h4>
@@ -270,7 +275,7 @@ const ExportacionPage = () => {
                                                       <TableCell>{animal.peso} kg</TableCell>
                                                       <TableCell>{animal.sexo}</TableCell>
                                                       <TableCell>
-                                                        {new Date(animal.fechaSalida).toLocaleDateString()}
+                                                        {animal.fechaSalida ? animal.fechaSalida.toLocaleDateString() : 'N/A'}
                                                       </TableCell>
                                                     </TableRow>
                                                   ))}

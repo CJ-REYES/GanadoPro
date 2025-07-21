@@ -8,6 +8,8 @@ using System.Linq;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using System;
+using System.Threading.Tasks;
+using System.Collections.Generic;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -108,8 +110,8 @@ namespace GanadoProBackEnd.Controllers
             // Obtener ID de usuario autenticado
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             
-            // Validar cliente por UPP
-            var cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.Upp == ventaDto.UPP);
+            // Validar cliente por ID
+            var cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.Id_Cliente == ventaDto.Id_Cliente);
             if (cliente == null)
                 return BadRequest("El cliente no existe");
 
@@ -181,6 +183,10 @@ namespace GanadoProBackEnd.Controllers
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateVenta(int id, [FromBody] UpdateVentaDto ventaDto)
         {
+
+             if (ventaDto == null || !ventaDto.TipoVenta.HasValue) // Verificar nullabilidad
+        return BadRequest("Datos inválidos");
+        
             if (ventaDto == null)
                 return BadRequest("El objeto de actualización es requerido");
 
@@ -200,7 +206,10 @@ namespace GanadoProBackEnd.Controllers
             // Actualizar propiedades
             venta.FechaSalida = ventaDto.FechaSalida;
             venta.FolioGuiaRemo = ventaDto.FolioGuiaRemo;
-            venta.TipoVenta = ventaDto.TipoVenta;
+            if (ventaDto.TipoVenta.HasValue)
+                venta.TipoVenta = ventaDto.TipoVenta.Value;
+            else
+                return BadRequest("El tipo de venta es requerido.");
 
             // Actualizar animales
             foreach (var lote in venta.LotesVendidos)
@@ -365,6 +374,25 @@ namespace GanadoProBackEnd.Controllers
             }).ToList();
         }
 
+        // Agregar nuevo endpoint para lotes disponibles
+        [HttpGet("lotes-disponibles")]
+        public async Task<ActionResult<IEnumerable<LoteDisponibleDto>>> GetLotesDisponibles()
+        {
+            var lotes = await _context.Lotes
+                .Include(l => l.Rancho)
+                .Where(l => l.Estado == "Disponible")
+                .Select(l => new LoteDisponibleDto
+                {
+                    Id_Lote = l.Id_Lote,
+                    REMO = l.Remo,
+                    Comunidad = l.Rancho.Ubicacion,
+                    CantidadAnimales = l.Animales.Count
+                })
+                .ToListAsync();
+
+            return Ok(lotes);
+        }
+
         // GET: api/Ventas/Lotes/{id}/Animales
         [HttpGet("Lotes/{id}/Animales")]
         public async Task<ActionResult<IEnumerable<AnimalVendidoDto>>> GetAnimalesPorLote(int id)
@@ -430,25 +458,34 @@ namespace GanadoProBackEnd.Controllers
         }
     }
 
+    // public enum TipoVenta
+    // {
+    //     Nacional,
+    //     Internacional
+    // }
+
     public class CreateVentaDto
     {
         [Required]
         public DateTime FechaSalida { get; set; }
         
         [Required]
-        public int Id_Rancho { get; set; }
-        
-        [Required]
-        public string UPP { get; set; } = "";
-        
-        [Required]
         public string FolioGuiaRemo { get; set; } = "";
         
         [Required]
-        public TipoVenta TipoVenta { get; set; }
+        public GanadoProBackEnd.Models.TipoVenta TipoVenta { get; set; }
         
         [Required]
         public List<int> LotesIds { get; set; } = new List<int>();
+        
+        [Required]
+        public int Id_Cliente { get; set; }
+
+        [Required]
+        public int Id_Rancho { get; set; }
+
+        [Required]
+        public string UPP { get; set; } = "";
     }
 
     public class UpdateVentaDto
@@ -460,7 +497,7 @@ namespace GanadoProBackEnd.Controllers
         public string FolioGuiaRemo { get; set; } = "";
         
         [Required]
-        public TipoVenta TipoVenta { get; set; }
+        public TipoVenta? TipoVenta { get; set; }
     }
 
     public class VentaResponseDto
@@ -541,5 +578,14 @@ namespace GanadoProBackEnd.Controllers
         public static ValidationResult Valid() => new ValidationResult { IsValid = true };
         public static ValidationResult Invalid(string error) =>
             new ValidationResult { IsValid = false, ErrorMessage = error };
+    }
+
+    // DTO para lotes disponibles
+    public class LoteDisponibleDto
+    {
+        public int Id_Lote { get; set; }
+        public int REMO { get; set; }
+        public string Comunidad { get; set; } = "";
+        public int CantidadAnimales { get; set; }
     }
 }
