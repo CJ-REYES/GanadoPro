@@ -6,9 +6,9 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
-  PlusCircle, FileText, Truck, CheckCircle, XCircle, Clock, Edit, Trash2, Loader2, Search
-} from 'lucide-react'; // Añadido Search aquí
-import { Input } from '@/components/ui/input'; // Añadido import de Input
+  PlusCircle, FileText, Truck, CheckCircle, XCircle, Clock, Edit, Trash2, Loader2, Search, ChevronDown, ChevronUp
+} from 'lucide-react';
+import { Input } from '@/components/ui/input';
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from "@/components/ui/table";
@@ -39,13 +39,16 @@ const OrdenesVentaPage = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState([]);
   
-  // Cargar órdenes
+  const [isLotesModalOpen, setIsLotesModalOpen] = useState(false);
+  const [selectedOrden, setSelectedOrden] = useState(null);
+  const [expandedLotes, setExpandedLotes] = useState({});
+  const [animalesLoading, setAnimalesLoading] = useState({});
+
   const cargarOrdenes = async () => {
     try {
       setLoading(true);
       const data = await ventasService.getOrdenesVenta();
       
-      // Transformar fechas a objetos Date
       const ordenesTransformadas = data.map(orden => ({
         ...orden,
         fechaSalida: orden.fechaSalida instanceof Date 
@@ -70,22 +73,19 @@ const OrdenesVentaPage = () => {
     cargarOrdenes();
   }, []);
 
- // Filtrar órdenes
   const filteredOrdenes = useMemo(() => {
     return ordenes.filter(orden => {
-      // Búsqueda por términos (CORRECCIÓN: quitamos paréntesis innecesarios)
       const matchesSearch = 
         orden.cliente?.toLowerCase().includes(searchTerm.toLowerCase()) || 
         orden.upp?.toLowerCase().includes(searchTerm.toLowerCase()) || 
         orden.folioGuiaRemo?.toLowerCase().includes(searchTerm.toLowerCase());
       
-      // Filtro por estado
       const matchesStatus = filterStatus.length === 0 || filterStatus.includes(orden.estado);
       
       return matchesSearch && matchesStatus;
     });
   }, [ordenes, searchTerm, filterStatus]);
-  // Crear categorías de órdenes
+
   const nacionales = useMemo(() => 
     filteredOrdenes.filter(o => o.tipoVenta === 'Nacional'), 
     [filteredOrdenes]
@@ -108,24 +108,12 @@ const OrdenesVentaPage = () => {
     setCurrentOrden(null);
   };
 
-  // Manejar creación exitosa de orden
-  const handleSaveSuccess = (nuevaOrden) => {
-    if (nuevaOrden) {
-      // Actualizar estado local con la nueva orden
-      setOrdenes(prev => {
-        // Si es una edición, reemplazar la orden existente
-        if (currentOrden) {
-          return prev.map(o => o.id === nuevaOrden.id ? nuevaOrden : o);
-        }
-        // Si es nueva, agregar al principio
-        return [nuevaOrden, ...prev];
-      });
-      
-      toast({ description: "Orden creada exitosamente" });
-    } else {
-      // Si no recibimos la nueva orden, recargar todo
-      cargarOrdenes();
-    }
+  // SOLUCIÓN: Recargar las órdenes después de crear/actualizar
+  const handleSaveSuccess = () => {
+    cargarOrdenes();
+    toast({ 
+      description: currentOrden ? "Orden actualizada exitosamente" : "Orden creada exitosamente" 
+    });
     handleCloseModal();
   };
 
@@ -133,7 +121,6 @@ const OrdenesVentaPage = () => {
     if (confirm('¿Estás seguro de eliminar esta orden?')) {
       try {
         await ventasService.deleteOrdenVenta(id);
-        // Eliminar localmente sin recargar todo
         setOrdenes(prev => prev.filter(o => o.id !== id));
         toast({ description: "Orden eliminada correctamente" });
       } catch (error) {
@@ -144,6 +131,50 @@ const OrdenesVentaPage = () => {
         });
       }
     }
+  };
+
+  const handleOpenLotesModal = (orden) => {
+    setSelectedOrden(orden);
+    setIsLotesModalOpen(true);
+    setExpandedLotes({});
+    setAnimalesLoading({});
+  };
+
+  const toggleExpandLote = async (loteId) => {
+    const newExpandedLotes = { ...expandedLotes };
+    const key = loteId;
+    
+    if (newExpandedLotes[key]) {
+      delete newExpandedLotes[key];
+    } else {
+      newExpandedLotes[key] = true;
+      
+      if (!selectedOrden.lotes.find(l => l.id === loteId)?.animales) {
+        try {
+          setAnimalesLoading(prev => ({ ...prev, [key]: true }));
+          const animales = await ventasService.getAnimalesLote(loteId);
+          
+          setSelectedOrden(prev => ({
+            ...prev,
+            lotes: prev.lotes.map(lote => 
+              lote.id === loteId 
+                ? { ...lote, animales } 
+                : lote
+            )
+          }));
+        } catch (error) {
+          toast({
+            title: "Error al cargar animales",
+            description: error.message,
+            variant: "destructive",
+          });
+        } finally {
+          setAnimalesLoading(prev => ({ ...prev, [key]: false }));
+        }
+      }
+    }
+    
+    setExpandedLotes(newExpandedLotes);
   };
 
   const OrdenesTable = ({ data, title }) => (
@@ -210,6 +241,14 @@ const OrdenesVentaPage = () => {
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
+                    <Button 
+                      variant="secondary" 
+                      size="icon" 
+                      onClick={() => handleOpenLotesModal(orden)}
+                      className="h-8 w-8"
+                    >
+                      <FileText className="h-4 w-4" />
+                    </Button>
                   </TableCell>
                 </TableRow>
               );
@@ -240,7 +279,6 @@ const OrdenesVentaPage = () => {
         </Button>
       </div>
       
-      {/* Barra de búsqueda y filtros */}
       <Card className="bg-card/60 backdrop-blur-md p-4">
         <div className="flex flex-col md:flex-row gap-4 items-center">
           <div className="relative flex-grow w-full md:w-auto">
@@ -252,13 +290,9 @@ const OrdenesVentaPage = () => {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          
-          {/* Filtros por estado */}
-          
         </div>
       </Card>
       
-      {/* Pestañas de tipos de venta */}
       <Tabs defaultValue="todas" className="w-full">
         <TabsList className="grid w-full grid-cols-3 bg-muted/50">
           <TabsTrigger value="todas">Todas las Órdenes</TabsTrigger>
@@ -288,6 +322,115 @@ const OrdenesVentaPage = () => {
             onClose={handleCloseModal} 
             onSave={handleSaveSuccess} 
           />
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isLotesModalOpen} onOpenChange={() => setIsLotesModalOpen(false)}>
+        <DialogContent className="sm:max-w-3xl max-h-[80vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Detalles de Lotes - Orden OV-{selectedOrden?.id}
+            </DialogTitle>
+          </DialogHeader>
+          {selectedOrden && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                <div>
+                  <h4 className="font-semibold text-sm mb-1">Folio Guía Remo</h4>
+                  <p>{selectedOrden.folioGuiaRemo}</p>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-sm mb-1">Fecha de Salida</h4>
+                  <p>
+                    {selectedOrden.fechaSalida.toLocaleDateString('es-MX', {
+                      day: '2-digit',
+                      month: '2-digit',
+                      year: 'numeric'
+                    })}
+                  </p>
+                </div>
+                <div>
+                  <h4 className="font-semibold text-sm mb-1">Estado</h4>
+                  <span className={cn("px-2 py-1 text-xs rounded-full flex items-center", getStatusIconAndColor(selectedOrden.estado).color)}>
+                    {selectedOrden.estado}
+                  </span>
+                </div>
+              </div>
+              
+              <h4 className="font-semibold mb-3">Lotes</h4>
+              <div className="space-y-3">
+                {selectedOrden.lotes.map((lote) => (
+                  <div key={lote.id} className="border rounded-lg overflow-hidden">
+                    <div
+                      className="flex justify-between items-center p-4 cursor-pointer hover:bg-muted/50"
+                      onClick={() => toggleExpandLote(lote.id)}
+                    >
+                      <div className="space-y-1">
+                        <div className="font-semibold">Lote #{lote.remO}</div>
+                        <div className="text-sm text-muted-foreground">
+                          Comunidad: {lote.comunidad} | Animales: {lote.cantidadAnimales}
+                        </div>
+                      </div>
+                      <div>
+                        <Button variant="ghost" size="icon">
+                          {expandedLotes[lote.id] ? (
+                            <ChevronUp className="h-5 w-5" />
+                          ) : (
+                            <ChevronDown className="h-5 w-5" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    {expandedLotes[lote.id] && (
+                      <div className="border-t">
+                        {animalesLoading[lote.id] ? (
+                          <div className="p-4 flex justify-center">
+                            <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                          </div>
+                        ) : (
+                          <div className="p-4 overflow-x-auto">
+                            {lote.animales?.length > 0 ? (
+                              <Table>
+                                <TableHeader>
+                                  <TableRow>
+                                    <TableHead>ID</TableHead>
+                                    <TableHead>Arete</TableHead>
+                                    <TableHead>Raza</TableHead>
+                                    <TableHead>Peso</TableHead>
+                                    <TableHead>Sexo</TableHead>
+                                    <TableHead>Fecha salida</TableHead>
+                                  </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                  {lote.animales.map((animal) => (
+                                    <TableRow key={animal.id_Animal}>
+                                      <TableCell>{animal.id_Animal}</TableCell>
+                                      <TableCell>{animal.arete}</TableCell>
+                                      <TableCell>{animal.raza}</TableCell>
+                                      <TableCell>{animal.peso} kg</TableCell>
+                                      <TableCell>{animal.sexo}</TableCell>
+                                      <TableCell>
+                                        {animal.fechaSalida ? animal.fechaSalida.toLocaleDateString() : 'N/A'}
+                                      </TableCell>
+                                    </TableRow>
+                                  ))}
+                                </TableBody>
+                              </Table>
+                            ) : (
+                              <p className="text-center text-muted-foreground py-4">
+                                No hay animales registrados en este lote
+                              </p>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </motion.div>
