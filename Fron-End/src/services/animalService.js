@@ -1,9 +1,8 @@
-// src/services/animalService.js
 const API_URL = 'http://localhost:5201/api/Animales';
 
 const fetchWithAuth = async (url, options = {}) => {
   const token = localStorage.getItem('token');
-  
+
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -36,7 +35,6 @@ const fetchWithAuth = async (url, options = {}) => {
   return response.json();
 };
 
-// Función para transformar las propiedades a minúsculas y dar valores por defecto
 const transformAnimal = (animal) => {
   return {
     id_Animal: animal.Id_Animal,
@@ -49,11 +47,9 @@ const transformAnimal = (animal) => {
   };
 };
 
-// Obtener animales en stock (EnStock)
 export const getAnimalesEnStock = async () => {
   try {
     const data = await fetchWithAuth(`${API_URL}/enstock`);
-    // Transformar cada animal
     return data.map(transformAnimal);
   } catch (error) {
     console.error('Error al obtener animales en stock:', error);
@@ -71,12 +67,19 @@ export const asignarAnimalesALote = async (loteId, animalIds) => {
   });
 };
 
-// Eliminar animal de un lote - CORREGIDO
 export const eliminarAnimalDeLote = async (animalId) => {
   await fetchWithAuth(`${API_URL}/${animalId}/remover-lote`, {
-    method: 'PATCH', // Cambiado a PATCH
+    method: 'PATCH',
     body: JSON.stringify({
-      Id_Lote: null // Establece el lote como null
+      Id_Lote: null
     }),
   });
+};
+
+export const getConteoAnimalesEnStock = async () => {
+  return await fetchWithAuth(`${API_URL}/count/enstock`);
+};
+
+export const getConteoAnimalesVendidos = async () => {
+  return await fetchWithAuth(`${API_URL}/count/vendidos`);
 };

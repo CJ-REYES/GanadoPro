@@ -165,7 +165,19 @@ namespace GanadoProBackEnd.Controllers
 
             return NoContent();
         }
+// Nuevos endpoints en LotesController.cs
 
+[HttpGet("count/vendidos")]
+public async Task<ActionResult<int>> GetCountLotesVendidos()
+{
+    return await _context.Lotes.CountAsync(l => l.Estado == "Vendido");
+}
+
+[HttpGet("count/disponibles")]
+public async Task<ActionResult<int>> GetCountLotesDisponibles()
+{
+    return await _context.Lotes.CountAsync(l => l.Estado == "Disponible");
+}
         // Método auxiliar para calcular el estado actual
         private static string CalcularEstado(string estadoActual, DateTime? fechaSalida)
         {

@@ -462,7 +462,7 @@ const GanadoForm = ({ animalId, ranchos, onSuccess, onCancel }) => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="UppOrigen">UPP Origen (10 caracteres)</Label>
+          <Label htmlFor="UppOrigen">UPP/PSG Origen (10 caracteres)</Label>
           <Input 
             id="UppOrigen" 
             name="UppOrigen" 
@@ -476,7 +476,7 @@ const GanadoForm = ({ animalId, ranchos, onSuccess, onCancel }) => {
           )}
         </div>
         <div>
-          <Label htmlFor="UppDestino">UPP Destino (10 caracteres)</Label>
+          <Label htmlFor="UppDestino">UPP/PSG Destino (10 caracteres)</Label>
           <Input 
             id="UppDestino" 
             name="UppDestino" 
@@ -493,7 +493,7 @@ const GanadoForm = ({ animalId, ranchos, onSuccess, onCancel }) => {
       
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
-          <Label htmlFor="FoliGuiaRemoEntrada">Folio Guía Remoción Entrada</Label>
+          <Label htmlFor="FoliGuiaRemoEntrada">Folio Guía Reemo Entrada</Label>
           <Input 
             id="FoliGuiaRemoEntrada" 
             name="FoliGuiaRemoEntrada" 
@@ -502,7 +502,7 @@ const GanadoForm = ({ animalId, ranchos, onSuccess, onCancel }) => {
           />
         </div>
         <div>
-          <Label htmlFor="FoliGuiaRemoSalida">Folio Guía Remoción Salida</Label>
+          <Label htmlFor="FoliGuiaRemoSalida">Folio Guía Reemo Salida</Label>
           <Input 
             id="FoliGuiaRemoSalida" 
             name="FoliGuiaRemoSalida" 
@@ -594,27 +594,7 @@ const GanadoForm = ({ animalId, ranchos, onSuccess, onCancel }) => {
           />
         </div>
       </div>
-      
-      <div>
-        <Label htmlFor="FierroCliente">Fierro del Cliente (Imagen)</Label>
-        <Input 
-          id="FierroCliente" 
-          name="FierroCliente" 
-          type="file" 
-          accept="image/*"
-          onChange={handleFileChange} 
-        />
-        {formData.FierroCliente && (
-          <div className="mt-2">
-            <img 
-              src={formData.FierroCliente} 
-              alt="Fierro del cliente" 
-              className="max-w-xs h-auto rounded"
-            />
-          </div>
-        )}
-      </div>
-      
+    
       <div>
         <Label htmlFor="Observaciones">Observaciones</Label>
         <Input 

@@ -1,9 +1,9 @@
-// src/services/loteService.js
+// src/services/loteService.js (completo con nuevas funciones)
 const API_URL = 'http://localhost:5201/api/Lotes';
 
 const fetchWithAuth = async (url, options = {}) => {
   const token = localStorage.getItem('token');
-  
+
   const headers = {
     'Content-Type': 'application/json',
     ...options.headers,
@@ -36,7 +36,6 @@ const fetchWithAuth = async (url, options = {}) => {
   return response.json();
 };
 
-// Función para transformar las propiedades a minúsculas
 const transformLote = (lote) => {
   return {
     id_Lote: lote.Id_Lote,
@@ -49,7 +48,6 @@ const transformLote = (lote) => {
     observaciones: lote.Observaciones,
     id_Cliente: lote.Id_Cliente,
     id_Rancho: lote.Id_Rancho,
-    // Relaciones
     user: lote.User ? {
       id_User: lote.User.Id_User,
       nombre: lote.User.Nombre
@@ -61,9 +59,8 @@ const transformLote = (lote) => {
     animales: lote.Animales ? lote.Animales.map(animal => ({
       id_Animal: animal.Id_Animal,
       arete: animal.Arete,
-      // Agregar más campos si son necesarios
       sexo: animal.Sexo || 'N/A',
-      edad: animal.Edad_Meses || 0,  
+      edad: animal.Edad_Meses || 0,
       peso: animal.Peso || 0
     })) : [],
     rancho: lote.Rancho ? {
@@ -71,7 +68,6 @@ const transformLote = (lote) => {
       nombre: lote.Rancho.Nombre,
       ubicacion: lote.Rancho.Ubicacion
     } : null,
-    // Campos calculados o para mostrar
     nombreRancho: lote.Rancho?.Nombre,
     comunidad: lote.Rancho?.Ubicacion,
     totalAnimales: lote.Animales?.length || 0
@@ -103,12 +99,9 @@ export const updateLote = async (id, loteData) => {
   const data = await fetchWithAuth(`${API_URL}/${id}`, {
     method: 'PUT',
     body: JSON.stringify({
-      Id_Lote: parseInt(id),  // Añade esto
+      Id_Lote: parseInt(id),
       Estado: loteData.estado,
-      // Agrega los demás campos necesarios
       Remo: parseInt(loteData.Remo)
-      
-      // ... otros campos requeridos por el backend
     }),
   });
   return data ? transformLote(data) : null;
@@ -119,4 +112,12 @@ export const deleteLote = async (id) => {
     method: 'DELETE',
   });
   return id;
+};
+
+export const getConteoLotesVendidos = async () => {
+  return await fetchWithAuth(`${API_URL}/count/vendidos`);
+};
+
+export const getConteoLotesDisponibles = async () => {
+  return await fetchWithAuth(`${API_URL}/count/disponibles`);
 };

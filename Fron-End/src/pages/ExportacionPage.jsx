@@ -205,7 +205,7 @@ const ExportacionPage = () => {
                             <div className="p-4 bg-gray-50 dark:bg-gray-800">
                               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
                                 <div>
-                                  <h4 className="font-semibold text-sm mb-1">Folio Guía Remo</h4>
+                                  <h4 className="font-semibold text-sm mb-1">Folio Guía Reemo</h4>
                                   <p>{venta.folioGuiaRemo}</p>
                                 </div>
                                 <div>

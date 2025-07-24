@@ -65,7 +65,7 @@ const LoteForm = ({ lote, ranchos, onSubmit, onCancel }) => {
       )}
       
       <div className="space-y-2">
-        <Label htmlFor="remo" className="text-foreground">Remo</Label>
+  <Label htmlFor="remo" className="text-foreground">Reemo</Label>
         <Input 
           id="remo" 
           name="remo" 
@@ -649,7 +649,7 @@ const LotesPage = () => {
           <div className="relative flex-grow w-full md:w-auto">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
             <Input 
-              placeholder="Buscar por remo, rancho, ubicación..." 
+              placeholder="Buscar por reemo, rancho, ubicación..." 
               className="pl-10 w-full"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}

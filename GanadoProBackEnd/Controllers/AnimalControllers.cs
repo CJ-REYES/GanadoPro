@@ -336,6 +336,20 @@ public async Task<IActionResult> RemoverLoteDeAnimal(int id)
     return NoContent();
 }
 
+// Nuevos endpoints en AnimalesController.cs
+
+[HttpGet("count/enstock")]
+public async Task<ActionResult<int>> GetCountAnimalesEnStock()
+{
+    return await _context.Animales.CountAsync(a => a.Estado == "EnStock");
+}
+
+[HttpGet("count/vendidos")]
+public async Task<ActionResult<int>> GetCountAnimalesVendidos()
+{
+    return await _context.Animales.CountAsync(a => a.Estado == "Vendido");
+}
+
         // Métodos auxiliares
         private AnimalResponseDto MapAnimalToDto(Animal animal)
         {
