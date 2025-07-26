@@ -1,6 +1,6 @@
 // CompradoresPage.jsx
 import { getUser } from '@/hooks/useToken'; 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -36,62 +36,62 @@ const CompradoresPage = () => {
   const [isEdit, setIsEdit] = useState(false);
   const [openDialog, setOpenDialog] = useState(false);
 
-  useEffect(() => {
-    const loadClientes = async () => {
-      try {
-        setLoading(true);
-        const data = await clienteService.getClientes();
-        // Filtra solo clientes que tengan rol Comprador o Cliente/Comprador
-        const compradores = data.filter(c => c.Rol === "Cliente");
-        setClientes(compradores);
-        setError(null);
-      } catch (err) {
-        console.error("Error cargando compradores:", err);
-        setError("Error al cargar los compradores.");
-      } finally {
-        setLoading(false);
-      }
-    };
-    loadClientes();
+  const loadClientes = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await clienteService.getClientes();
+      const compradores = data.filter(c => c.Rol === "Comprador" || c.Rol === "Cliente");
+      setClientes(compradores);
+      setError(null);
+    } catch (err) {
+      console.error("Error cargando compradores:", err);
+      setError("Error al cargar los compradores.");
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => {
+    loadClientes();
+  }, [loadClientes]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  const user = getUser();
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    const user = getUser();
 
-  const payload = {
-    ...formData,
-    Id_User: user?.id || user?.Id_User || 0,
-    Rol: "Comprador"
-  };
-
-  console.log("Payload a enviar:", payload);  // <--- Aquí para revisar datos
-
-  try {
-    setLoading(true);
-    if (isEdit) {
-      const updated = await clienteService.updateCliente(formData.Id_Cliente, payload);
-      setClientes(prev => prev.map(c => c.Id_Cliente === updated.Id_Cliente ? updated : c));
-    } else {
-      const nuevo = await clienteService.createCliente(payload);
-      setClientes([...clientes, nuevo]);
+    const payload = {
+      ...formData,
+      Id_User: user?.id || user?.Id_User || 0,
+    };
+    
+    if (!isEdit) {
+      payload.Rol = "Comprador";
     }
-    setFormData(initialClienteData);
-    setIsEdit(false);
-    setOpenDialog(false);
-    setError(null);
-  } catch (err) {
-    console.error("Error al guardar comprador:", err);
-    setError("No se pudo guardar el comprador.");
-  } finally {
-    setLoading(false);
-  }
-};
+
+    try {
+      setLoading(true);
+      if (isEdit) {
+        await clienteService.updateCliente(formData.Id_Cliente, payload);
+      } else {
+        await clienteService.createCliente(payload);
+      }
+      await loadClientes();
+      setFormData(initialClienteData);
+      setIsEdit(false);
+      setOpenDialog(false);
+      setError(null);
+    } catch (err) {
+      console.error("Error al guardar comprador:", err);
+      setError("No se pudo guardar el comprador.");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleEdit = (cliente) => {
     setFormData(cliente);
@@ -102,11 +102,14 @@ const CompradoresPage = () => {
   const handleDelete = async (id) => {
     if (confirm("¿Estás seguro que deseas eliminar este comprador?")) {
       try {
+        setLoading(true);
         await clienteService.deleteCliente(id);
-        setClientes(prev => prev.filter(c => c.Id_Cliente !== id));
+        await loadClientes();
       } catch (err) {
         console.error("Error al eliminar comprador:", err);
         setError("No se pudo eliminar el comprador.");
+      } finally {
+        setLoading(false);
       }
     }
   };
