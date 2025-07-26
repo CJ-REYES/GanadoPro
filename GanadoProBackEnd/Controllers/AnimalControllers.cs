@@ -20,13 +20,11 @@ namespace GanadoProBackEnd.Controllers
 
         // GET: Todos los animales
         [HttpGet]
-
         public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimales()
         {
             var animales = await _context.Animales
                 .Include(a => a.Lote)
                 .Include(a => a.Rancho)
-
                 .Include(a => a.Clientes)
                 .ToListAsync();
 
@@ -34,41 +32,44 @@ namespace GanadoProBackEnd.Controllers
         }
 
         [HttpGet("comprados")]
-
         public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesComprados()
         {
             var animales = await _context.Animales
                 .Where(a => !string.IsNullOrEmpty(a.UppOrigen) && a.Estado != "EnStock")
                 .Include(a => a.Lote)
                 .Include(a => a.Rancho)
-
                 .Include(a => a.Clientes)
                 .ToListAsync();
 
             return animales.Select(a => MapAnimalToDto(a)).ToList();
         }
-        [HttpGet("enstock")]
-public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesEnStock()
-{
-    var animales = await _context.Animales
-        .Where(a => a.Estado == "EnStock") // Filtra solo animales en stock
-        .Include(a => a.Lote)
-        .Include(a => a.Rancho)
-        .Include(a => a.Clientes)
-        .ToListAsync();
 
-    return animales.Select(a => MapAnimalToDto(a)).ToList();
-}
+        [HttpGet("enstock")]
+        public async Task<ActionResult<IEnumerable<AnimalEnStockDto>>> GetAnimalesEnStock()
+        {
+            var animales = await _context.Animales
+                .Where(a => a.Estado == "EnStock" && a.Id_Lote == null)
+                .ToListAsync();
+
+            return animales.Select(a => new AnimalEnStockDto
+            {
+                Id_Animal = a.Id_Animal,
+                Arete = a.Arete,
+                Sexo = a.Sexo,
+                Edad_Meses = a.Edad_Meses,
+                Peso = a.Peso,
+                Raza = a.Raza,
+                Id_Lote = a.Id_Lote
+            }).ToList();
+        }
 
         // GET: Animal por ID
         [HttpGet("{id}")]
-
         public async Task<ActionResult<AnimalResponseDto>> GetAnimal(int id)
         {
             var animal = await _context.Animales
                 .Include(a => a.Lote)
                 .Include(a => a.Rancho)
-
                 .Include(a => a.Clientes)
                 .FirstOrDefaultAsync(a => a.Id_Animal == id);
 
@@ -79,7 +80,6 @@ public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesEnSto
 
         // POST: Crear nuevo animal
         [HttpPost]
-
         public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] CreateAnimalDto animalDto)
         {
             // Validar rancho
@@ -120,18 +120,19 @@ public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesEnSto
 
                 idCliente = cliente.Id_Cliente;
             }
-            // Verificar arete único (nueva validación)
-    bool areteExiste = await _context.Animales
-        .AnyAsync(a => a.Arete == animalDto.Arete);
-    
-    if (areteExiste)
-    {
-        return BadRequest(new 
-        { 
-            Message = "El arete ya está registrado en otro animal", 
-            Field = "Arete" 
-        });
-    }
+            
+            // Verificar arete único
+            bool areteExiste = await _context.Animales
+                .AnyAsync(a => a.Arete == animalDto.Arete);
+            
+            if (areteExiste)
+            {
+                return BadRequest(new 
+                { 
+                    Message = "El arete ya está registrado en otro animal", 
+                    Field = "Arete" 
+                });
+            }
 
             // Validar lote si se proporciona
             if (animalDto.Id_Lote.HasValue && animalDto.Id_Lote.Value > 0)
@@ -170,7 +171,6 @@ public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesEnSto
                 RazonSocial = animalDto.RazonSocial,
                 Estado = animalDto.Estado,
                 Id_Lote = animalDto.Id_Lote,
-
                 Id_Cliente = idCliente,
                 FechaRegistro = DateTime.Now
             };
@@ -204,11 +204,9 @@ public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesEnSto
 
         // PUT: Actualizar animal existente
         [HttpPut("{id}")]
-
         public async Task<IActionResult> UpdateAnimal(int id, [FromBody] UpdateAnimalDto updateDto)
         {
             var animal = await _context.Animales
-
                 .Include(a => a.Clientes)
                 .FirstOrDefaultAsync(a => a.Id_Animal == id);
 
@@ -228,7 +226,6 @@ public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesEnSto
                     });
 
                 animal.UppOrigen = updateDto.UppOrigen;
-
             }
 
             // Validar UPP Destino si se actualiza
@@ -320,35 +317,32 @@ public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimalesEnSto
 
             return NoContent();
         }
+        
         // PATCH: Remover lote de un animal
-[HttpPatch("{id}/remover-lote")]
-public async Task<IActionResult> RemoverLoteDeAnimal(int id)
-{
-    var animal = await _context.Animales.FindAsync(id);
-    if (animal == null)
-    {
-        return NotFound();
-    }
+        [HttpPatch("{id}/remover-lote")]
+        public async Task<IActionResult> RemoverLoteDeAnimal(int id)
+        {
+            var animal = await _context.Animales.FindAsync(id);
+            if (animal == null) return NotFound();
 
-    animal.Id_Lote = null;
-    await _context.SaveChangesAsync();
+            animal.Id_Lote = null;
+            await _context.SaveChangesAsync();
 
-    return NoContent();
-}
+            return NoContent();
+        }
 
-// Nuevos endpoints en AnimalesController.cs
+        // Nuevos endpoints
+        [HttpGet("count/enstock")]
+        public async Task<ActionResult<int>> GetCountAnimalesEnStock()
+        {
+            return await _context.Animales.CountAsync(a => a.Estado == "EnStock");
+        }
 
-[HttpGet("count/enstock")]
-public async Task<ActionResult<int>> GetCountAnimalesEnStock()
-{
-    return await _context.Animales.CountAsync(a => a.Estado == "EnStock");
-}
-
-[HttpGet("count/vendidos")]
-public async Task<ActionResult<int>> GetCountAnimalesVendidos()
-{
-    return await _context.Animales.CountAsync(a => a.Estado == "Vendido");
-}
+        [HttpGet("count/vendidos")]
+        public async Task<ActionResult<int>> GetCountAnimalesVendidos()
+        {
+            return await _context.Animales.CountAsync(a => a.Estado == "Vendido");
+        }
 
         // Métodos auxiliares
         private AnimalResponseDto MapAnimalToDto(Animal animal)
@@ -379,14 +373,23 @@ public async Task<ActionResult<int>> GetCountAnimalesVendidos()
                 Estado = animal.Estado,
                 Id_Lote = animal.Id_Lote,
                 Id_Rancho = animal.Id_Rancho,
-
                 Id_Cliente = animal.Id_Cliente,
-
                 NombreRancho = animal.Rancho?.NombreRancho
             };
         }
 
         // DTOs
+        public class AnimalEnStockDto
+        {
+            public int Id_Animal { get; set; }
+            public string Arete { get; set; }
+            public string Sexo { get; set; }
+            public int Edad_Meses { get; set; }
+            public int? Peso { get; set; }
+            public string Raza { get; set; }
+            public int? Id_Lote { get; set; }
+        }
+
         public class CreateAnimalDto
         {
             [Required]

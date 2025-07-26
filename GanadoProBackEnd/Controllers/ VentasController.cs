@@ -393,24 +393,65 @@ namespace GanadoProBackEnd.Controllers
             return Ok(lotes);
         }
 
-        // GET: api/Ventas/Lotes/{id}/Animales
-        [HttpGet("Lotes/{id}/Animales")]
-        public async Task<ActionResult<IEnumerable<AnimalVendidoDto>>> GetAnimalesPorLote(int id)
-        {
-            var animales = await _context.Animales
-                .Where(a => a.Id_Lote == id && a.Estado == "Vendido")
-                .ToListAsync();
+[HttpGet("Lotes/{id}/Animales")]
+public async Task<ActionResult<IEnumerable<AnimalVendidoDto>>> GetAnimalesPorLote(int id)
+{
+    // Eliminar filtro por estado
+    var animales = await _context.Animales
+        .Where(a => a.Id_Lote == id) // <- Solo filtrar por ID de lote
+        .ToListAsync();
 
-            return animales.Select(a => new AnimalVendidoDto
-            {
-                Id_Animal = a.Id_Animal,
-                Arete = a.Arete,
-                Peso = a.Peso,
-                Sexo = a.Sexo,
-                Raza = a.Raza,
-                FechaSalida = a.FechaSalida
-            }).ToList();
+    return animales.Select(a => new AnimalVendidoDto
+    {
+        Id_Animal = a.Id_Animal,
+        Arete = a.Arete,
+        Peso = a.Peso,
+        Sexo = a.Sexo,
+        Raza = a.Raza,
+        FechaSalida = a.FechaSalida
+    }).ToList();
+}
+
+[HttpDelete("Completadas/{id}")]
+public async Task<IActionResult> DeleteVentaCompletada(int id)
+{
+    var venta = await _context.Ventas
+        .Include(v => v.LotesVendidos)
+            .ThenInclude(l => l.Animales)
+        .FirstOrDefaultAsync(v => v.Id_Venta == id);
+
+    if (venta == null)
+        return NotFound();
+
+    if (venta.Estado != "Completada")
+        return BadRequest("Solo se pueden eliminar ventas en estado 'Completada'");
+
+    // Restaurar estado de lotes y animales
+    foreach (var lote in venta.LotesVendidos.ToList())
+    {
+        lote.Estado = "Disponible";
+        lote.Fecha_Salida = null;
+        lote.Id_Cliente = null;
+        
+        foreach (var animal in lote.Animales)
+        {
+            animal.Estado = "EnStock";
+            animal.FechaSalida = null;
+            animal.FoliGuiaRemoSalida = null;
+            animal.Id_Cliente = null;
         }
+    }
+
+    // Eliminar relación con lotes sin borrar la venta
+    venta.LotesVendidos.Clear();
+    
+    // Cambiar estado de la venta a "Cancelada" en lugar de borrarla
+    venta.Estado = "Cancelada";
+    
+    await _context.SaveChangesAsync();
+
+    return NoContent();
+}
 
         private static VentaResponseDto MapToDto(Venta venta)
         {

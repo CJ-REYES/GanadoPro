@@ -65,7 +65,7 @@ const LoteForm = ({ lote, ranchos, onSubmit, onCancel }) => {
       )}
       
       <div className="space-y-2">
-  <Label htmlFor="remo" className="text-foreground">Reemo</Label>
+        <Label htmlFor="remo" className="text-foreground">Reemo</Label>
         <Input 
           id="remo" 
           name="remo" 
@@ -114,9 +114,9 @@ const LoteForm = ({ lote, ranchos, onSubmit, onCancel }) => {
   );
 };
 
-const LoteAccordion = ({ lote, onEdit, onDelete, onRemoveAnimal }) => {
+const LoteAccordion = ({ lote, onEdit, onDelete, onForceDelete, onRemoveAnimal }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isRemoving, setIsRemoving] = useState(false); // Estado para mostrar carga al eliminar
+  const [isRemoving, setIsRemoving] = useState(false);
 
   const getStatusClass = (estado) => {
     return cn(`px-2 py-1 text-xs rounded-full`,
@@ -170,12 +170,17 @@ const LoteAccordion = ({ lote, onEdit, onDelete, onRemoveAnimal }) => {
             size="icon" 
             onClick={(e) => {
               e.stopPropagation();
-              onDelete(lote.id_Lote);
+              if (lote.estado === 'Vendido') {
+                onForceDelete(lote.id_Lote);
+              } else {
+                onDelete(lote.id_Lote);
+              }
             }}
             className="text-foreground hover:text-destructive"
           >
             <Trash2 className="h-4 w-4" />
           </Button>
+          
         </div>
       </div>
       
@@ -243,6 +248,7 @@ const LoteAccordion = ({ lote, onEdit, onDelete, onRemoveAnimal }) => {
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                             ) : 'Eliminar'}
                           </Button>
+                          
                         </td>
                       </tr>
                     ))}
@@ -267,18 +273,20 @@ const AssignAnimalsForm = ({ lotes, onAssign, onCancel }) => {
   const [animals, setAnimals] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [isAssigning, setIsAssigning] = useState(false); // Estado para mostrar carga
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
 
-  // Obtener animales disponibles
   useEffect(() => {
     const fetchAnimals = async () => {
       try {
         const data = await animalService.getAnimalesEnStock();
         
-        // Filtrar animales sin lote asignado y con id_Animal definido
         const availableAnimals = data
           .filter(animal => !animal.id_Lote)
-          .filter(animal => animal.id_Animal); // Solo animales con id_Animal definido
+          .map(animal => ({
+            ...animal,
+            raza: animal.raza || 'N/A'
+          }));
           
         setAnimals(availableAnimals);
       } catch (err) {
@@ -313,6 +321,10 @@ const AssignAnimalsForm = ({ lotes, onAssign, onCancel }) => {
     }
   };
 
+  const filteredAnimals = animals.filter(animal => 
+    animal.arete.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       <div className="space-y-2">
@@ -334,7 +346,17 @@ const AssignAnimalsForm = ({ lotes, onAssign, onCancel }) => {
       </div>
 
       <div className="space-y-2">
-        <Label className="text-foreground">Animales Disponibles</Label>
+        <Label className="text-foreground">Animales Disponibles ({animals.length})</Label>
+        
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Buscar por arete..." 
+            className="pl-10 w-full"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
         
         {isLoading ? (
           <div className="flex justify-center py-4">
@@ -342,13 +364,13 @@ const AssignAnimalsForm = ({ lotes, onAssign, onCancel }) => {
           </div>
         ) : error ? (
           <div className="text-destructive text-center py-4">{error}</div>
-        ) : animals.length === 0 ? (
+        ) : filteredAnimals.length === 0 ? (
           <p className="text-muted-foreground text-center py-4">
             No hay animales disponibles para asignar
           </p>
         ) : (
           <div className="max-h-80 overflow-y-auto border rounded-md p-4">
-            {animals.map(animal => (
+            {filteredAnimals.map(animal => (
               <div 
                 key={`animal-${animal.id_Animal}`}
                 className={`flex items-center p-2 rounded-md ${
@@ -370,7 +392,7 @@ const AssignAnimalsForm = ({ lotes, onAssign, onCancel }) => {
                 >
                   <p className="font-medium">Arete: {animal.arete}</p>
                   <p className="text-sm text-muted-foreground">
-                    {animal.raza} | {animal.peso} kg | {animal.edad_Meses} meses
+                    {animal.raza} | {animal.peso} kg | {animal.edad_Meses} meses | {animal.sexo}
                   </p>
                 </label>
               </div>
@@ -419,7 +441,6 @@ const LotesPage = () => {
   const token = getToken();
   const [user] = useLocalStorage('user', null);
 
-  // Obtener ranchos
   const fetchRanchos = async () => {
     try {
       const data = await ranchoService.getRanchos();
@@ -429,12 +450,11 @@ const LotesPage = () => {
     }
   };
 
-  // Obtener lotes con animales
   const fetchLotes = async () => {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await loteService.getLotes();
+      const data = await loteService.getLotes('Disponible');
       setLotes(data);
     } catch (error) {
       setError(error.message);
@@ -444,7 +464,6 @@ const LotesPage = () => {
     }
   };
 
-  // Crear nuevo lote
   const handleCreateLote = async (newLote) => {
     try {
       const createdLote = await loteService.createLote({
@@ -461,7 +480,6 @@ const LotesPage = () => {
     }
   };
 
-  // Actualizar lote
   const handleUpdateLote = async (updatedLote) => {
     if (!updatedLote || !updatedLote.id_Lote) {
       toast({ title: "Error", description: "ID de lote no válido", variant: "destructive" });
@@ -469,7 +487,6 @@ const LotesPage = () => {
     }
     
     try {
-      // Preparar datos para enviar al backend
       const updateData = {
         Id_Lote: updatedLote.id_Lote,
         Remo: parseInt(updatedLote.remo),
@@ -482,7 +499,6 @@ const LotesPage = () => {
 
       await loteService.updateLote(updatedLote.id_Lote, updateData);
       
-      // Actualizar estado local
       setLotes(lotes.map(l => 
         l.id_Lote === updatedLote.id_Lote ? { ...l, ...updatedLote } : l
       ));
@@ -495,30 +511,73 @@ const LotesPage = () => {
     }
   };
 
-  // Eliminar lote
-  const handleDeleteLote = async (loteId) => {
-    if (!loteId) {
-      toast({ title: "Error", description: "ID de lote no válido", variant: "destructive" });
-      return;
-    }
+const handleDeleteLote = async (loteId) => {
+  if (!loteId) return;
+  
+  if (!window.confirm('¿Está seguro de que desea eliminar este lote?')) return;
+  
+  try {
+    await loteService.deleteLote(loteId);
+    setLotes(lotes.filter(l => l.id_Lote !== loteId));
+    toast({ title: "Éxito", description: "Lote eliminado correctamente" });
+  } catch (error) {
+    let errorMessage = error.message;
     
-    if (!window.confirm('¿Está seguro de que desea eliminar este lote?')) return;
-    
-    try {
-      await loteService.deleteLote(loteId);
-      setLotes(lotes.filter(l => l.id_Lote !== loteId));
-      toast({ title: "Éxito", description: "Lote eliminado correctamente" });
-    } catch (error) {
-      toast({ title: "Error", description: error.message, variant: "destructive" });
+    // Mensaje específico para ventas asociadas
+    if (errorMessage.includes("ventas asociadas")) {
+      errorMessage = "No se puede eliminar: el lote tiene ventas registradas. " +
+                    "¿Desea eliminar forzadamente el lote y todas sus ventas?";
+      
+      toast({ 
+        title: "Error", 
+        description: errorMessage,
+        variant: "destructive",
+        duration: 10000,
+        action: (
+          <Button 
+            variant="destructive" 
+            size="sm"
+            onClick={() => handleForceDeleteLote(loteId)}
+          >
+            Eliminar forzadamente
+          </Button>
+        )
+      });
+    } else {
+      toast({ 
+        title: "Error", 
+        description: errorMessage,
+        variant: "destructive" 
+      });
     }
-  };
+  }
+};
 
-  // Función para asignar animales a lote
+const handleForceDeleteLote = async (loteId) => {
+  if (!window.confirm('¡ADVERTENCIA! Esta acción eliminará PERMANENTEMENTE el lote y TODAS sus ventas asociadas. ¿Continuar?')) return;
+  
+  try {
+    await loteService.forceDeleteLote(loteId);
+    setLotes(lotes.filter(l => l.id_Lote !== loteId));
+    toast({ 
+      title: "Éxito", 
+      description: "Lote y ventas asociadas eliminados permanentemente",
+      variant: "success"
+    });
+  } catch (error) {
+    toast({ 
+      title: "Error", 
+      description: `Error al eliminar forzadamente: ${error.message}`,
+      variant: "destructive" 
+    });
+  }
+};
+
   const handleAssignAnimals = async (loteId, animalIds) => {
     try {
       await animalService.asignarAnimalesALote(loteId, animalIds);
       toast({ title: "Éxito", description: "Animales asignados correctamente" });
-      fetchLotes(); // Actualizar lista de lotes
+      fetchLotes();
       setIsAssignDialogOpen(false);
     } catch (error) {
       toast({ 
@@ -529,12 +588,11 @@ const LotesPage = () => {
     }
   };
 
-  // Función para eliminar animal de un lote
   const handleRemoveAnimal = async (animalId) => {
     try {
       await animalService.eliminarAnimalDeLote(animalId);
       toast({ title: "Éxito", description: "Animal eliminado del lote correctamente" });
-      fetchLotes(); // Recargar los lotes
+      fetchLotes();
     } catch (error) {
       toast({ 
         title: "Error", 
@@ -591,7 +649,6 @@ const LotesPage = () => {
           Gestión de Lotes
         </h1>
         <div className="flex flex-wrap gap-2">
-          {/* Botón para Asignar Animales */}
           <Dialog open={isAssignDialogOpen} onOpenChange={setIsAssignDialogOpen}>
             <DialogTrigger asChild>
               <Button variant="outline" className="bg-gradient-to-r from-blue-500 to-indigo-500 hover:from-blue-500/90 hover:to-indigo-500/90 text-white">
@@ -606,14 +663,13 @@ const LotesPage = () => {
                 </DialogDescription>
               </DialogHeader>
               <AssignAnimalsForm 
-                lotes={lotes.filter(l => l.estado === 'Disponible')} // Solo lotes disponibles
+                lotes={lotes.filter(l => l.estado === 'Disponible')}
                 onAssign={handleAssignAnimals}
                 onCancel={() => setIsAssignDialogOpen(false)}
               />
             </DialogContent>
           </Dialog>
 
-          {/* Botón para Nuevo Lote */}
           <Dialog open={isFormOpen} onOpenChange={(isOpen) => {
             setIsFormOpen(isOpen);
             if (!isOpen) setEditingLote(null);
@@ -667,7 +723,7 @@ const LotesPage = () => {
               {['Disponible', 'Vendido', 'En proceso de venta'].map(estado => (
                 <DropdownMenuCheckboxItem 
                   key={estado} 
-                  onCheckedChange={() => { /* Implementar lógica de filtrado si es necesario */ }}
+                  onCheckedChange={() => { /* Lógica de filtrado */ }}
                 >
                   {estado}
                 </DropdownMenuCheckboxItem>
@@ -708,6 +764,7 @@ const LotesPage = () => {
                     setIsFormOpen(true);
                   }}
                   onDelete={handleDeleteLote}
+                  onForceDelete={handleForceDeleteLote}
                   onRemoveAnimal={handleRemoveAnimal}
                 />
               ))}

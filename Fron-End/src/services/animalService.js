@@ -35,7 +35,8 @@ const fetchWithAuth = async (url, options = {}) => {
   return response.json();
 };
 
-const transformAnimal = (animal) => {
+// Función específica para transformar animales en stock
+const transformAnimalEnStock = (animal) => {
   return {
     id_Animal: animal.Id_Animal,
     arete: animal.Arete || "Sin arete",
@@ -50,7 +51,7 @@ const transformAnimal = (animal) => {
 export const getAnimalesEnStock = async () => {
   try {
     const data = await fetchWithAuth(`${API_URL}/enstock`);
-    return data.map(transformAnimal);
+    return data.map(transformAnimalEnStock);
   } catch (error) {
     console.error('Error al obtener animales en stock:', error);
     throw error;
@@ -69,10 +70,7 @@ export const asignarAnimalesALote = async (loteId, animalIds) => {
 
 export const eliminarAnimalDeLote = async (animalId) => {
   await fetchWithAuth(`${API_URL}/${animalId}/remover-lote`, {
-    method: 'PATCH',
-    body: JSON.stringify({
-      Id_Lote: null
-    }),
+    method: 'PATCH'
   });
 };
 

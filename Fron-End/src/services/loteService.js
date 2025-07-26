@@ -1,4 +1,3 @@
-// src/services/loteService.js (completo con nuevas funciones)
 const API_URL = 'http://localhost:5201/api/Lotes';
 
 const fetchWithAuth = async (url, options = {}) => {
@@ -74,8 +73,22 @@ const transformLote = (lote) => {
   };
 };
 
-export const getLotes = async () => {
-  const data = await fetchWithAuth(API_URL);
+export const getLotes = async (estados = null) => {
+  let url = API_URL;
+  const params = new URLSearchParams();
+
+  if (estados) {
+    if (Array.isArray(estados)) {
+      // Manejar array de estados: ['Disponible', 'En proceso de venta']
+      estados.forEach(estado => params.append('estados', estado));
+    } else {
+      // Mantener compatibilidad con string único
+      params.append('estados', estados);
+    }
+    url += '?' + params.toString();
+  }
+
+  const data = await fetchWithAuth(url);
   return data.map(transformLote);
 };
 
@@ -108,10 +121,43 @@ export const updateLote = async (id, loteData) => {
 };
 
 export const deleteLote = async (id) => {
-  await fetchWithAuth(`${API_URL}/${id}`, {
-    method: 'DELETE',
-  });
-  return id;
+  try {
+    const response = await fetchWithAuth(`${API_URL}/${id}`, {
+      method: 'DELETE',
+    });
+    
+    return id;
+  } catch (error) {
+    // Extraer el mensaje de error directamente
+    let errorMessage = error.message;
+    
+    // Intentar parsear el mensaje como JSON si es posible
+    try {
+      const startIndex = errorMessage.indexOf('{');
+      if (startIndex !== -1) {
+        const jsonString = errorMessage.substring(startIndex);
+        const errorData = JSON.parse(jsonString);
+        if (errorData.Message) {
+          errorMessage = errorData.Message;
+        }
+      }
+    } catch (parseError) {
+      // Mantener el mensaje original si no se puede parsear
+    }
+    
+    throw new Error(errorMessage);
+  }
+};
+
+export const forceDeleteLote = async (id) => {
+  try {
+    await fetchWithAuth(`${API_URL}/${id}/force`, {
+      method: 'DELETE',
+    });
+    return id;
+  } catch (error) {
+    throw new Error(`Error al eliminar forzadamente: ${error.message}`);
+  }
 };
 
 export const getConteoLotesVendidos = async () => {

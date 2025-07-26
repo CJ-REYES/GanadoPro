@@ -190,6 +190,17 @@ export const deleteOrdenVenta = async (id) => {
     throw error;
   }
 };
+export const deleteVentaCompletada = async (id) => {
+  try {
+    await fetchWithAuth(`${API_URL}/Completadas/${id}`, {
+      method: 'DELETE'
+    });
+    return true;
+  } catch (error) {
+    console.error('Error al eliminar la venta completada:', error);
+    throw error;
+  }
+};
 
 export const getLotesDisponibles = async () => {
   try {

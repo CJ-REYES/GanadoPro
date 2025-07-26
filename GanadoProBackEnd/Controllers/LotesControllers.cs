@@ -23,35 +23,39 @@ namespace GanadoProBackEnd.Controllers
             _context = context;
         }
 
-        // GET: Todos los lotes
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes()
-        {
-            var lotes = await _context.Lotes
-                .Include(l => l.User)
-                .Include(l => l.Cliente)
-                .Include(l => l.Animales) // Asegurar incluir animales
-                .Include(l => l.Rancho)
-                .ToListAsync();
+public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes(
+    [FromQuery] List<string> estados) // Cambio clave: List<string>
+{
+    var query = _context.Lotes
+        .Include(l => l.User)
+        .Include(l => l.Cliente)
+        .Include(l => l.Animales)
+        .Include(l => l.Rancho)
+        .AsQueryable();
 
-            return lotes.Select(l => MapLoteToDto(l)).ToList();
-        }
+    // Filtra por múltiples estados si se proporcionan
+    if (estados != null && estados.Count > 0)
+    {
+        query = query.Where(l => estados.Contains(l.Estado));
+    }
 
-        // GET: Lote por ID
+    var lotes = await query.ToListAsync();
+    return lotes.Select(l => MapLoteToDto(l)).ToList();
+}
         [HttpGet("{id}")]
         public async Task<ActionResult<LoteResponseDto>> GetLote(int id)
         {
             var lote = await _context.Lotes
                 .Include(l => l.User)
                 .Include(l => l.Cliente)
-                .Include(l => l.Animales) // Asegurar incluir animales
+                .Include(l => l.Animales)
                 .Include(l => l.Rancho)
                 .FirstOrDefaultAsync(l => l.Id_Lote == id);
 
             if (lote == null)
                 return NotFound();
 
-            // Actualizar estado si es necesario
             var nuevoEstado = CalcularEstado(lote.Estado, lote.Fecha_Salida);
             if (nuevoEstado != lote.Estado)
             {
@@ -63,11 +67,9 @@ namespace GanadoProBackEnd.Controllers
             return MapLoteToDto(lote);
         }
 
-        // POST: Crear nuevo lote
         [HttpPost]
         public async Task<ActionResult<LoteResponseDto>> CreateLote([FromBody] CreateLoteDto loteDto)
         {
-            // Validar rancho
             var rancho = await _context.Ranchos
                 .Include(r => r.User)
                 .FirstOrDefaultAsync(r => r.Id_Rancho == loteDto.Id_Rancho);
@@ -75,7 +77,6 @@ namespace GanadoProBackEnd.Controllers
             if (rancho == null)
                 return BadRequest("El rancho no existe");
 
-            // Verificar si ya existe un remo idéntico
             bool remoExistente = await _context.Lotes
                 .AnyAsync(l => l.Remo == loteDto.Remo);
             
@@ -84,7 +85,6 @@ namespace GanadoProBackEnd.Controllers
                 return Conflict("Ya existe un lote con el mismo remo en la base de datos");
             }
 
-            // Calcular estado automáticamente
             string estado;
             if (loteDto.Fecha_Salida.HasValue)
             {
@@ -98,7 +98,7 @@ namespace GanadoProBackEnd.Controllers
 
             var lote = new Lote
             {
-                Id_User = rancho.Id_User, // Propietario del rancho
+                Id_User = rancho.Id_User,
                 Remo = loteDto.Remo,
                 Fecha_Entrada = loteDto.Fecha_Entrada,
                 Fecha_Salida = loteDto.Fecha_Salida,
@@ -107,8 +107,8 @@ namespace GanadoProBackEnd.Controllers
                 Estado = estado,
                 Fecha_Creacion = DateTime.Now,
                 Id_Rancho = loteDto.Id_Rancho,
-                User = rancho.User, // Asignar el usuario propietario del rancho
-                Animales = new List<Animal>() // Inicializar la lista de animales vacía
+                User = rancho.User,
+                Animales = new List<Animal>()
             };
 
             _context.Lotes.Add(lote);
@@ -117,7 +117,6 @@ namespace GanadoProBackEnd.Controllers
             return CreatedAtAction(nameof(GetLote), new { id = lote.Id_Lote }, MapLoteToDto(lote));
         }
 
-        // PUT: Actualizar lote existente
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateLote(int id, [FromBody] UpdateLoteDto updateDto)
         {
@@ -128,7 +127,6 @@ namespace GanadoProBackEnd.Controllers
             if (existingLote == null)
                 return NotFound();
 
-            // Capturar cambios en la fecha de salida
             var fechaSalidaCambiada = existingLote.Fecha_Salida != updateDto.Fecha_Salida;
 
             existingLote.Remo = updateDto.Remo;
@@ -137,7 +135,6 @@ namespace GanadoProBackEnd.Controllers
             existingLote.Observaciones = updateDto.Observaciones;
             existingLote.Id_Cliente = updateDto.Id_Cliente;
 
-            // Actualizar estado si cambió la fecha de salida
             if (fechaSalidaCambiada)
             {
                 existingLote.Estado = updateDto.Fecha_Salida.HasValue ?
@@ -152,52 +149,110 @@ namespace GanadoProBackEnd.Controllers
             return NoContent();
         }
 
-        // DELETE: Eliminar lote
+        // SOLUCIÓN CORREGIDA: Eliminación sin transacción explícita
         [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteLote(int id)
+        public async Task<IActionResult> Delete(int id)
         {
-            var lote = await _context.Lotes.FindAsync(id);
+            var lote = await _context.Lotes
+                .Include(l => l.Ventas)
+                .Include(l => l.Animales)
+                .FirstOrDefaultAsync(l => l.Id_Lote == id);
+
             if (lote == null)
+            {
                 return NotFound();
+            }
+
+            // Verificar si tiene ventas asociadas
+            if (lote.Ventas != null && lote.Ventas.Count > 0)
+            {
+                return BadRequest(new
+                {
+                    Message = "No se puede eliminar el lote porque tiene ventas asociadas. " +
+                              "Elimine primero las ventas relacionadas."
+                });
+            }
+
+            // Desvincular animales
+            if (lote.Animales != null)
+            {
+                foreach (var animal in lote.Animales)
+                {
+                    animal.Id_Lote = null;
+                }
+            }
 
             _context.Lotes.Remove(lote);
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
-// Nuevos endpoints en LotesController.cs
-
-[HttpGet("count/vendidos")]
-public async Task<ActionResult<int>> GetCountLotesVendidos()
+        // DELETE: api/Ventas/Completadas/{id}
+[ApiExplorerSettings(GroupName = "Ventas")]
+        [HttpDelete("Completadas/{id}")]
+public async Task<IActionResult> DeleteVentaCompletada(int id)
 {
-    return await _context.Lotes.CountAsync(l => l.Estado == "Vendido");
-}
+    var venta = await _context.Ventas
+        .Include(v => v.LotesVendidos)
+            .ThenInclude(l => l.Animales)
+        .FirstOrDefaultAsync(v => v.Id_Venta == id);
 
-[HttpGet("count/disponibles")]
-public async Task<ActionResult<int>> GetCountLotesDisponibles()
-{
-    return await _context.Lotes.CountAsync(l => l.Estado == "Disponible");
+    if (venta == null)
+        return NotFound();
+
+    // Verificar que solo se puedan eliminar ventas completadas
+    if (venta.Estado != "Completada")
+        return BadRequest("Solo se pueden eliminar ventas en estado 'Completada'");
+
+    // Revertir estado de lotes y animales a "Disponible"
+    foreach (var lote in venta.LotesVendidos)
+    {
+        lote.Estado = "Disponible";
+        lote.Fecha_Salida = null;
+        lote.Id_Cliente = null;
+        
+        foreach (var animal in lote.Animales)
+        {
+            animal.Estado = "Disponible";
+            animal.FechaSalida = null;
+            animal.FoliGuiaRemoSalida = null;
+            animal.Id_Cliente = null;
+        }
+    }
+
+    _context.Ventas.Remove(venta);
+    await _context.SaveChangesAsync();
+
+    return NoContent();
 }
-        // Método auxiliar para calcular el estado actual
+        [HttpGet("count/vendidos")]
+        public async Task<ActionResult<int>> GetCountLotesVendidos()
+        {
+            return await _context.Lotes.CountAsync(l => l.Estado == "Vendido");
+        }
+
+        [HttpGet("count/disponibles")]
+        public async Task<ActionResult<int>> GetCountLotesDisponibles()
+        {
+            return await _context.Lotes.CountAsync(l => l.Estado == "Disponible");
+        }
+
         private static string CalcularEstado(string estadoActual, DateTime? fechaSalida)
         {
-            // Si ya está vendido, mantener estado
             if (estadoActual == "Vendido") 
                 return estadoActual;
             
-            // Si no tiene fecha de salida, debe estar disponible
             if (!fechaSalida.HasValue) 
                 return "Disponible";
             
-            // Si la fecha de salida es hoy o anterior, está vendido
             if (fechaSalida.Value.Date <= DateTime.Today)
                 return "Vendido";
             
-            // Si tiene fecha futura y no es vendido, está en proceso
             return "En proceso de venta";
         }
+        
+        
 
-        // Mapear Lote a DTO de respuesta
         private LoteResponseDto MapLoteToDto(Lote lote)
         {
             return new LoteResponseDto
@@ -212,12 +267,12 @@ public async Task<ActionResult<int>> GetCountLotesDisponibles()
                 Observaciones = lote.Observaciones,
                 Id_Cliente = lote.Id_Cliente,
                 Id_Rancho = lote.Id_Rancho,
-                User = lote.User != null ? new UserDto 
+                User = lote.User != null ? new UserDto
                 {
                     Id_User = lote.User.Id_User,
                     Nombre = lote.User.Name
                 } : null,
-                Cliente = lote.Cliente != null ? new ClienteDto 
+                Cliente = lote.Cliente != null ? new ClienteDto
                 {
                     Id_Cliente = lote.Cliente.Id_Cliente,
                     Nombre = lote.Cliente.Propietario
@@ -226,7 +281,6 @@ public async Task<ActionResult<int>> GetCountLotesDisponibles()
                 {
                     Id_Animal = a.Id_Animal,
                     Arete = a.Arete,
-                    // Añadir los nuevos campos
                     Sexo = a.Sexo,
                     Edad_Meses = a.Edad_Meses,
                     Peso = a.Peso
@@ -234,12 +288,12 @@ public async Task<ActionResult<int>> GetCountLotesDisponibles()
                 Rancho = lote.Rancho != null ? new RanchoDto
                 {
                     Id_Rancho = lote.Rancho.Id_Rancho,
-                    Nombre = lote.Rancho.NombreRancho
+                    Nombre = lote.Rancho.NombreRancho,
+                    Ubicacion = lote.Rancho.Ubicacion
                 } : null
             };
         }
 
-        // DTOs
         public class CreateLoteDto
         {
             [Required(ErrorMessage = "El Remo es obligatorio")]
@@ -296,7 +350,6 @@ public async Task<ActionResult<int>> GetCountLotesDisponibles()
         {
             public int Id_Animal { get; set; }
             public string Arete { get; set; }
-            // Añadir los campos necesarios para animales
             public string Sexo { get; set; }
             public int Edad_Meses { get; set; }
             public int Peso { get; set; }
@@ -306,6 +359,7 @@ public async Task<ActionResult<int>> GetCountLotesDisponibles()
         {
             public int Id_Rancho { get; set; }
             public string Nombre { get; set; }
+            public string Ubicacion { get; set; }
         }
     }
 }

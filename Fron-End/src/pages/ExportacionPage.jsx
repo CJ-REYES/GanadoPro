@@ -7,7 +7,7 @@ import {
 import { 
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow 
 } from '@/components/ui/table';
-import { ChevronDown, ChevronUp, Ghost } from 'lucide-react';
+import { ChevronDown, ChevronUp, Ghost, Trash } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/components/ui/use-toast';
@@ -22,6 +22,7 @@ const ExportacionPage = () => {
   const [expandedLotes, setExpandedLotes] = useState({});
   const [animalesLoading, setAnimalesLoading] = useState({});
   const [filter, setFilter] = useState('todas');
+  const [deleting, setDeleting] = useState({});
 
   useEffect(() => {
     const fetchVentas = async () => {
@@ -95,6 +96,33 @@ const ExportacionPage = () => {
     setExpandedLotes(newExpandedLotes);
   };
 
+  const handleDeleteVenta = async (ventaId) => {
+  if (!window.confirm('¿Estás seguro de eliminar esta venta completada? Los lotes volverán a estar disponibles.')) {
+    return;
+  }
+
+  try {
+    setDeleting(prev => ({ ...prev, [ventaId]: true }));
+    await ventasService.deleteVentaCompletada(ventaId);
+    
+    // ACTUALIZACIÓN: Eliminar la venta del estado local
+    setVentas(prev => prev.filter(v => v.id_Venta !== ventaId));
+    
+    toast({
+      title: "Venta eliminada",
+      description: "La venta ha sido eliminada y los lotes están disponibles",
+      variant: "success",
+    });
+  } catch (error) {
+    toast({
+      title: "Error al eliminar venta",
+      description: error.message,
+      variant: "destructive",
+    });
+  } finally {
+    setDeleting(prev => ({ ...prev, [ventaId]: false }));
+  }
+};
   const filteredVentas = ventas.filter(venta => {
     if (filter === 'todas') return true;
     return venta.tipoVenta === (filter === 'nacionales' ? 'Nacional' : 'Internacional');
@@ -181,21 +209,43 @@ const ExportacionPage = () => {
                           </span>
                         </TableCell>
                         <TableCell>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            onClick={() => toggleExpandVenta(venta.id_Venta)}
-                          >
-                            {expandedVenta === venta.id_Venta ? (
-                              <>
-                                <ChevronUp className="mr-1 h-4 w-4" /> Ocultar
-                              </>
-                            ) : (
-                              <>
-                                <ChevronDown className="mr-1 h-4 w-4" /> Detalles
-                              </>
-                            )}
-                          </Button>
+                          <div className="flex gap-1">
+                            <Button 
+                              variant="outline" 
+                              size="sm"
+                              onClick={() => toggleExpandVenta(venta.id_Venta)}
+                            >
+                              {expandedVenta === venta.id_Venta ? (
+                                <>
+                                  <ChevronUp className="mr-1 h-4 w-4" /> Ocultar
+                                </>
+                              ) : (
+                                <>
+                                  <ChevronDown className="mr-1 h-4 w-4" /> Detalles
+                                </>
+                              )}
+                            </Button>
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteVenta(venta.id_Venta)}
+                              disabled={deleting[venta.id_Venta]}
+                            >
+                              {deleting[venta.id_Venta] ? (
+                                <span className="flex items-center">
+                                  <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                  </svg>
+                                  Eliminando...
+                                </span>
+                              ) : (
+                                <span className="flex items-center">
+                                  <Trash className="mr-1 h-4 w-4" /> Eliminar
+                                </span>
+                              )}
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                       
