@@ -157,7 +157,6 @@ namespace GanadoProBackEnd.Controllers
                 Raza = animalDto.Raza,
                 Edad_Meses = animalDto.Edad_Meses,
                 FoliGuiaRemoEntrada = animalDto.FoliGuiaRemoEntrada,
-                FoliGuiaRemoSalida = animalDto.FoliGuiaRemoSalida,
                 UppOrigen = animalDto.UppOrigen,
                 UppDestino = animalDto.UppDestino,
                 FechaIngreso = animalDto.FechaIngreso ?? DateTime.Now,
@@ -196,6 +195,8 @@ namespace GanadoProBackEnd.Controllers
             foreach (var animal in animales)
             {
                 animal.Id_Lote = request.Id_Lote;
+                // Asignar el remo del lote al animal
+                animal.FoliGuiaRemoSalida = lote.Remo.ToString();
             }
 
             await _context.SaveChangesAsync();
@@ -265,10 +266,13 @@ namespace GanadoProBackEnd.Controllers
                         return BadRequest(new { Message = "Lote no existe", Field = "Id_Lote" });
 
                     animal.Id_Lote = updateDto.Id_Lote;
+                    // Actualizar el folio de salida con el remo del nuevo lote
+                    animal.FoliGuiaRemoSalida = lote.Remo.ToString();
                 }
                 else
                 {
                     animal.Id_Lote = null;
+                    animal.FoliGuiaRemoSalida = null;
                 }
             }
 
@@ -280,7 +284,6 @@ namespace GanadoProBackEnd.Controllers
             animal.Raza = updateDto.Raza ?? animal.Raza;
             animal.Edad_Meses = updateDto.Edad_Meses;
             animal.FoliGuiaRemoEntrada = updateDto.FoliGuiaRemoEntrada ?? animal.FoliGuiaRemoEntrada;
-            animal.FoliGuiaRemoSalida = updateDto.FoliGuiaRemoSalida ?? animal.FoliGuiaRemoSalida;
 
             if (!string.IsNullOrEmpty(updateDto.FechaIngreso))
                 animal.FechaIngreso = DateTime.ParseExact(updateDto.FechaIngreso, "yyyy-MM-dd", CultureInfo.InvariantCulture);
@@ -326,6 +329,7 @@ namespace GanadoProBackEnd.Controllers
             if (animal == null) return NotFound();
 
             animal.Id_Lote = null;
+            animal.FoliGuiaRemoSalida = null;
             await _context.SaveChangesAsync();
 
             return NoContent();
@@ -406,7 +410,6 @@ namespace GanadoProBackEnd.Controllers
             public string? Clasificacion { get; set; }
             public int Edad_Meses { get; set; }
             public string? FoliGuiaRemoEntrada { get; set; }
-            public string? FoliGuiaRemoSalida { get; set; }
             public string? UppOrigen { get; set; }
             public string? UppDestino { get; set; }
             public DateTime? FechaIngreso { get; set; }
@@ -434,7 +437,6 @@ namespace GanadoProBackEnd.Controllers
             public string? Clasificacion { get; set; }
             public int Edad_Meses { get; set; }
             public string? FoliGuiaRemoEntrada { get; set; }
-            public string? FoliGuiaRemoSalida { get; set; }
             public string? UppOrigen { get; set; }
             public string? UppDestino { get; set; }
             public string? FechaIngreso { get; set; }

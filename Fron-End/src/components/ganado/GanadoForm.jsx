@@ -29,7 +29,6 @@ const GanadoForm = ({ animalId, ranchos, onSuccess, onCancel }) => {
     FechaSalida: '',
     MotivoSalida: '',
     FoliGuiaRemoEntrada: '',
-    FoliGuiaRemoSalida: '',
     CertificadoZootanitario: '',
     ContanciaGarrapaticida: '',
     FolioTB: '',
@@ -77,7 +76,6 @@ const GanadoForm = ({ animalId, ranchos, onSuccess, onCancel }) => {
             FechaSalida: formatDate(animal.fechaSalida) || '',
             MotivoSalida: animal.motivoSalida || '',
             FoliGuiaRemoEntrada: animal.foliGuiaRemoEntrada || '',
-            FoliGuiaRemoSalida: animal.foliGuiaRemoSalida || '',
             CertificadoZootanitario: animal.certificadoZootanitario || '',
             ContanciaGarrapaticida: animal.contanciaGarrapaticida || '',
             FolioTB: animal.folioTB || '',
@@ -219,7 +217,6 @@ const GanadoForm = ({ animalId, ranchos, onSuccess, onCancel }) => {
         Raza: formData.Raza,
         Edad_Meses: formData.Edad_Meses ? Number(formData.Edad_Meses) : 0,
         FoliGuiaRemoEntrada: formData.FoliGuiaRemoEntrada || null,
-        FoliGuiaRemoSalida: formData.FoliGuiaRemoSalida || null,
         UppOrigen: formData.UppOrigen || null,
         UppDestino: formData.UppDestino || null,
         FechaIngreso: formData.FechaIngreso,
@@ -275,7 +272,7 @@ const GanadoForm = ({ animalId, ranchos, onSuccess, onCancel }) => {
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        {/* Selector de Ranchos Mejorado */}
+        {/* Selector de Ranchos */}
         <div>
           <Label htmlFor="Id_Rancho">
             Rancho*
@@ -491,22 +488,13 @@ const GanadoForm = ({ animalId, ranchos, onSuccess, onCancel }) => {
         </div>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 gap-4">
         <div>
           <Label htmlFor="FoliGuiaRemoEntrada">Folio Guía Reemo Entrada</Label>
           <Input 
             id="FoliGuiaRemoEntrada" 
             name="FoliGuiaRemoEntrada" 
             value={formData.FoliGuiaRemoEntrada} 
-            onChange={handleChange} 
-          />
-        </div>
-        <div>
-          <Label htmlFor="FoliGuiaRemoSalida">Folio Guía Reemo Salida</Label>
-          <Input 
-            id="FoliGuiaRemoSalida" 
-            name="FoliGuiaRemoSalida" 
-            value={formData.FoliGuiaRemoSalida} 
             onChange={handleChange} 
           />
         </div>

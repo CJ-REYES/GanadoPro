@@ -1,4 +1,3 @@
-// src/services/ganadoService.js
 const API_URL = 'http://localhost:5201/api/Animales';
 
 const fetchWithAuth = async (url, options = {}) => {

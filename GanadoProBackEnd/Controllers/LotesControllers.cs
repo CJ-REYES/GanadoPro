@@ -24,25 +24,25 @@ namespace GanadoProBackEnd.Controllers
         }
 
         [HttpGet]
-public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes(
-    [FromQuery] List<string> estados) // Cambio clave: List<string>
-{
-    var query = _context.Lotes
-        .Include(l => l.User)
-        .Include(l => l.Cliente)
-        .Include(l => l.Animales)
-        .Include(l => l.Rancho)
-        .AsQueryable();
+        public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes(
+            [FromQuery] List<string> estados)
+        {
+            var query = _context.Lotes
+                .Include(l => l.User)
+                .Include(l => l.Cliente)
+                .Include(l => l.Animales)
+                .Include(l => l.Rancho)
+                .AsQueryable();
 
-    // Filtra por múltiples estados si se proporcionan
-    if (estados != null && estados.Count > 0)
-    {
-        query = query.Where(l => estados.Contains(l.Estado));
-    }
+            if (estados != null && estados.Count > 0)
+            {
+                query = query.Where(l => estados.Contains(l.Estado));
+            }
 
-    var lotes = await query.ToListAsync();
-    return lotes.Select(l => MapLoteToDto(l)).ToList();
-}
+            var lotes = await query.ToListAsync();
+            return lotes.Select(l => MapLoteToDto(l)).ToList();
+        }
+        
         [HttpGet("{id}")]
         public async Task<ActionResult<LoteResponseDto>> GetLote(int id)
         {
@@ -123,11 +123,14 @@ public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes(
             if (id != updateDto.Id_Lote)
                 return BadRequest("ID no coincide");
 
-            var existingLote = await _context.Lotes.FindAsync(id);
+            var existingLote = await _context.Lotes
+                .Include(l => l.Animales)
+                .FirstOrDefaultAsync(l => l.Id_Lote == id);
             if (existingLote == null)
                 return NotFound();
 
             var fechaSalidaCambiada = existingLote.Fecha_Salida != updateDto.Fecha_Salida;
+            var remoCambiado = existingLote.Remo != updateDto.Remo;
 
             existingLote.Remo = updateDto.Remo;
             existingLote.Fecha_Entrada = updateDto.Fecha_Entrada;
@@ -143,13 +146,21 @@ public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes(
                     "Disponible";
             }
 
+            // Si cambió el remo, actualizar los animales
+            if (remoCambiado && existingLote.Animales != null)
+            {
+                foreach (var animal in existingLote.Animales)
+                {
+                    animal.FoliGuiaRemoSalida = updateDto.Remo.ToString();
+                }
+            }
+
             _context.Entry(existingLote).State = EntityState.Modified;
             await _context.SaveChangesAsync();
 
             return NoContent();
         }
 
-        // SOLUCIÓN CORREGIDA: Eliminación sin transacción explícita
         [HttpDelete("{id}")]
         public async Task<IActionResult> Delete(int id)
         {
@@ -163,7 +174,6 @@ public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes(
                 return NotFound();
             }
 
-            // Verificar si tiene ventas asociadas
             if (lote.Ventas != null && lote.Ventas.Count > 0)
             {
                 return BadRequest(new
@@ -173,12 +183,13 @@ public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes(
                 });
             }
 
-            // Desvincular animales
+            // Desvincular animales y limpiar folio de salida
             if (lote.Animales != null)
             {
                 foreach (var animal in lote.Animales)
                 {
                     animal.Id_Lote = null;
+                    animal.FoliGuiaRemoSalida = null;
                 }
             }
 
@@ -187,44 +198,43 @@ public async Task<ActionResult<IEnumerable<LoteResponseDto>>> GetLotes(
 
             return NoContent();
         }
-        // DELETE: api/Ventas/Completadas/{id}
-[ApiExplorerSettings(GroupName = "Ventas")]
-        [HttpDelete("Completadas/{id}")]
-public async Task<IActionResult> DeleteVentaCompletada(int id)
-{
-    var venta = await _context.Ventas
-        .Include(v => v.LotesVendidos)
-            .ThenInclude(l => l.Animales)
-        .FirstOrDefaultAsync(v => v.Id_Venta == id);
-
-    if (venta == null)
-        return NotFound();
-
-    // Verificar que solo se puedan eliminar ventas completadas
-    if (venta.Estado != "Completada")
-        return BadRequest("Solo se pueden eliminar ventas en estado 'Completada'");
-
-    // Revertir estado de lotes y animales a "Disponible"
-    foreach (var lote in venta.LotesVendidos)
-    {
-        lote.Estado = "Disponible";
-        lote.Fecha_Salida = null;
-        lote.Id_Cliente = null;
         
-        foreach (var animal in lote.Animales)
+        [ApiExplorerSettings(GroupName = "Ventas")]
+        [HttpDelete("Completadas/{id}")]
+        public async Task<IActionResult> DeleteVentaCompletada(int id)
         {
-            animal.Estado = "Disponible";
-            animal.FechaSalida = null;
-            animal.FoliGuiaRemoSalida = null;
-            animal.Id_Cliente = null;
+            var venta = await _context.Ventas
+                .Include(v => v.LotesVendidos)
+                    .ThenInclude(l => l.Animales)
+                .FirstOrDefaultAsync(v => v.Id_Venta == id);
+
+            if (venta == null)
+                return NotFound();
+
+            if (venta.Estado != "Completada")
+                return BadRequest("Solo se pueden eliminar ventas en estado 'Completada'");
+
+            foreach (var lote in venta.LotesVendidos)
+            {
+                lote.Estado = "Disponible";
+                lote.Fecha_Salida = null;
+                lote.Id_Cliente = null;
+                
+                foreach (var animal in lote.Animales)
+                {
+                    animal.Estado = "Disponible";
+                    animal.FechaSalida = null;
+                    animal.FoliGuiaRemoSalida = null;
+                    animal.Id_Cliente = null;
+                }
+            }
+
+            _context.Ventas.Remove(venta);
+            await _context.SaveChangesAsync();
+
+            return NoContent();
         }
-    }
-
-    _context.Ventas.Remove(venta);
-    await _context.SaveChangesAsync();
-
-    return NoContent();
-}
+        
         [HttpGet("count/vendidos")]
         public async Task<ActionResult<int>> GetCountLotesVendidos()
         {
@@ -251,8 +261,6 @@ public async Task<IActionResult> DeleteVentaCompletada(int id)
             return "En proceso de venta";
         }
         
-        
-
         private LoteResponseDto MapLoteToDto(Lote lote)
         {
             return new LoteResponseDto
