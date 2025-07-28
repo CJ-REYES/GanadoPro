@@ -23,28 +23,22 @@ namespace GanadoProBackEnd.Controllers
         public VentasController(MyDbContext context) => _context = context;
 
         // Método estático reutilizable para actualizar estado de venta
-        public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
+public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
+{
+    if (venta.Estado == "Programada" && venta.FechaSalida <= DateTime.Today)
+    {
+        venta.Estado = "Completada";
+        foreach (var lote in venta.LotesVendidos)
         {
-            if (venta.Estado == "Programada" && venta.FechaSalida <= DateTime.Today)
+            lote.Estado = "Vendido";
+            foreach (var animal in lote.Animales)
             {
-                venta.Estado = "Completada";
-                
-                foreach (var lote in venta.LotesVendidos)
-                {
-                    lote.Estado = "Vendido";
-                    lote.Fecha_Salida = venta.FechaSalida;
-
-                    foreach (var animal in lote.Animales)
-                    {
-                        animal.Estado = "Vendido";
-                        animal.FechaSalida = venta.FechaSalida;
-                        animal.FoliGuiaRemoSalida = venta.FolioGuiaRemo;
-                        animal.Id_Cliente = venta.Id_Cliente;
-                    }
-                }
-                await context.SaveChangesAsync();
+                animal.Estado = "Vendido"; // Solo aquí -> Vendido
             }
         }
+        await context.SaveChangesAsync();
+    }
+}
 
         // GET: api/Ventas (todas las ventas programadas o disponibles)
         [HttpGet]
@@ -279,7 +273,7 @@ namespace GanadoProBackEnd.Controllers
                 
                 foreach (var animal in lote.Animales)
                 {
-                    animal.Estado = "Disponible";
+                    animal.Estado = "EnStock"; // Cambiar estado a EnStock
                     animal.FechaSalida = null;
                     animal.FoliGuiaRemoSalida = null;
                     animal.Id_Cliente = null;

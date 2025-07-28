@@ -168,7 +168,7 @@ namespace GanadoProBackEnd.Controllers
                 ValidacionConside_ID = animalDto.ValidacionConside_ID,
                 FierroCliente = animalDto.FierroCliente != null ? Convert.FromBase64String(animalDto.FierroCliente) : null,
                 RazonSocial = animalDto.RazonSocial,
-                Estado = animalDto.Estado,
+                Estado = "EnStock",
                 Id_Lote = animalDto.Id_Lote,
                 Id_Cliente = idCliente,
                 FechaRegistro = DateTime.Now
