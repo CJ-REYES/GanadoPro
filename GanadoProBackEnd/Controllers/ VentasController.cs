@@ -141,7 +141,7 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
                     animal.FechaSalida = ventaDto.FechaSalida;
                     animal.FoliGuiaRemoSalida = ventaDto.FolioGuiaRemo;
                     animal.Id_Cliente = cliente.Id_Cliente;
-                    animal.Estado = "En proceso de venta";
+                    animal.Estado = "EnProceso";
                     animal.UppDestino = cliente.Upp; // AÑADIR ESTA LÍNEA
                 }
             }
