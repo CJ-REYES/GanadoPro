@@ -6,6 +6,7 @@ namespace GanadoProBackEnd.Models
 {
     public class Rancho
     {
+        public int Id_Animal { get; set; }
         [Required]
         public int Id_Rancho { get; set; }
         [Required]
@@ -16,6 +17,7 @@ namespace GanadoProBackEnd.Models
         public string Ubicacion { get; set; } // Asignar el email del usuario al rancho
         [ForeignKey("Id_User")]
 public User User { get; set; }
+public ICollection<Animal> Animales { get; set; }
         public ICollection<Lote> Lotes { get; set; } = new List<Lote>(); // Relación con Userpublic ICollection<Corrales> Corrales { get; set; }
     }
 }

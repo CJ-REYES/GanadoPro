@@ -89,3 +89,14 @@ export const getRanchosByUser = async () => {
   const data = await fetchWithAuth(`${API_URL}/mis-ranchos`);
   return data.map(transformRancho);
 };
+
+export const getResumenGanado = async () => {
+  const data = await fetchWithAuth(`${API_URL}/resumen-ganado`);
+  return data.map(rancho => ({
+    id_Rancho: rancho.Id_Rancho,
+    nombreRancho: rancho.NombreRancho,
+    totalAnimales: rancho.TotalAnimales,
+    totalHembras: rancho.TotalHembras,
+    totalMachos: rancho.TotalMachos
+  }));
+};

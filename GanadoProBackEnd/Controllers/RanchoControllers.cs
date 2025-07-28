@@ -71,7 +71,7 @@ namespace GanadoProBackEnd.Controllers
         {
             // Obtener ID de usuario autenticado
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
-            
+
             var ranchos = await _context.Ranchos
                 .Where(r => r.Id_User == userId)
                 .Select(r => new RanchoResponseDto
@@ -196,6 +196,22 @@ namespace GanadoProBackEnd.Controllers
 
             return NoContent();
         }
+        [HttpGet("resumen-ganado")]
+public async Task<ActionResult<IEnumerable<ResumenGanadoDto>>> GetResumenGanadoPorRancho()
+{
+    var resumen = await _context.Ranchos
+        .Select(r => new ResumenGanadoDto
+        {
+            Id_Rancho = r.Id_Rancho,
+            NombreRancho = r.NombreRancho,
+            TotalAnimales = r.Animales.Count(),
+            TotalHembras = r.Animales.Count(a => a.Sexo == "Hembra"),
+            TotalMachos = r.Animales.Count(a => a.Sexo == "Macho")
+        })
+        .ToListAsync();
+
+    return resumen;
+}
     }
 
     // DTOs
@@ -206,7 +222,7 @@ namespace GanadoProBackEnd.Controllers
         public string NombreRancho { get; set; }
 
         public string Ubicacion { get; set; }
-        
+
         [Required(ErrorMessage = "El ID de usuario es obligatorio")]
         public int Id_User { get; set; }
     }
@@ -232,4 +248,12 @@ namespace GanadoProBackEnd.Controllers
         public string Email { get; set; }
         public int TotalLotes { get; set; }
     }
+    public class ResumenGanadoDto
+{
+    public int Id_Rancho { get; set; }
+    public string NombreRancho { get; set; }
+    public int TotalAnimales { get; set; }
+    public int TotalHembras { get; set; }
+    public int TotalMachos { get; set; }
+}
 }

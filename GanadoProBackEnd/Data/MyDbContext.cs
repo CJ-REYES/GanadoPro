@@ -122,19 +122,21 @@ namespace GanadoProBackEnd.Data
             // Configuración de Productores
            
             // Configuración de Rancho
-            modelBuilder.Entity<Rancho>(entity =>
-            {
-                entity.HasKey(e => e.Id_Rancho);
-
-                entity.HasOne(r => r.User)
-                    .WithMany(u => u.Ranchos)
-                    .HasForeignKey(r => r.Id_User)
-                    .OnDelete(DeleteBehavior.Restrict);
-                    modelBuilder.Entity<Rancho>()
-    .HasOne(r => r.User)
-    .WithMany(u => u.Ranchos)
-    .HasForeignKey(r => r.Id_User);
-            });
+   modelBuilder.Entity<Rancho>(entity =>
+    {
+        entity.HasKey(e => e.Id_Rancho);
+        
+        // Relación con User (existente)
+        entity.HasOne(r => r.User)
+            .WithMany(u => u.Ranchos)
+            .HasForeignKey(r => r.Id_User);
+        
+        // AÑADIR ESTA RELACIÓN CON ANIMALES
+        entity.HasMany(r => r.Animales)
+            .WithOne(a => a.Rancho)
+            .HasForeignKey(a => a.Id_Rancho)
+            .OnDelete(DeleteBehavior.Restrict);
+    });
 
             // Configuración de User
             modelBuilder.Entity<User>(entity =>

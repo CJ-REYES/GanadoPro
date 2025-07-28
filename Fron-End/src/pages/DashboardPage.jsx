@@ -12,12 +12,13 @@ import {
   Users, 
   Truck, 
   TrendingUp, 
-  TrendingDown, 
+  TrendingDown,
   AlertTriangle,
   Beef,
   PiggyBank,
   Baby,
-  ShoppingCart
+  ShoppingCart,
+  LayoutGrid
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -46,6 +47,7 @@ import {
   getConteoLotesVendidos, 
   getConteoLotesDisponibles 
 } from '@/services/loteService';
+import { getResumenGanado } from '@/services/ranchoService'; // Importamos el nuevo servicio
 
 const StatCard = ({ title, value, icon: Icon, color, description, trend }) => (
   <motion.div
@@ -84,6 +86,7 @@ const DashboardPage = () => {
     lotesVendidos: 0,
     lotesDisponibles: 0
   });
+  const [resumenRanchos, setResumenRanchos] = useState([]); // Nuevo estado para los ranchos
   const [ranchos] = useState([
     { Id_Rancho: 1, Nombre: 'Rancho El Sol' },
     { Id_Rancho: 2, Nombre: 'Rancho La Luna' },
@@ -92,7 +95,6 @@ const DashboardPage = () => {
   const handleSuccess = (nuevoAnimal) => {
     console.log("Animal registrado con éxito:", nuevoAnimal);
     setOpen(false);
-    // Recargar datos después de registrar un nuevo animal
     cargarDatos();
   };
 
@@ -109,12 +111,14 @@ const DashboardPage = () => {
         conteoAnimalesStock, 
         conteoAnimalesVendidos,
         conteoLotesVendidos,
-        conteoLotesDisponibles
+        conteoLotesDisponibles,
+        resumenRanchosData // Nuevo dato
       ] = await Promise.all([
         getConteoAnimalesEnStock(),
         getConteoAnimalesVendidos(),
         getConteoLotesVendidos(),
-        getConteoLotesDisponibles()
+        getConteoLotesDisponibles(),
+        getResumenGanado() // Llamada al nuevo servicio
       ]);
 
       setStats({
@@ -123,6 +127,8 @@ const DashboardPage = () => {
         lotesVendidos: conteoLotesVendidos,
         lotesDisponibles: conteoLotesDisponibles
       });
+
+      setResumenRanchos(resumenRanchosData); // Guardamos los datos de los ranchos
 
     } catch (err) {
       console.error('Error cargando datos del dashboard:', err);
@@ -365,34 +371,65 @@ const DashboardPage = () => {
         </motion.div>
       </div>
       
-      {/* Resumen de Ganado */}
+      {/* Resumen de Ganado por Rancho (Nueva Tabla) */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.4 }}
-        className="pt-4"
       >
-        <Card className="bg-card/80 backdrop-blur-sm hover:shadow-primary/20 hover:shadow-lg transition-all duration-300 h-full flex flex-col">
+        <Card className="bg-card/80 backdrop-blur-sm hover:shadow-primary/20 hover:shadow-lg transition-all duration-300">
           <CardHeader>
-            <CardTitle className="text-xl text-gray-900 dark:text-white">Resumen de Ganado por Categoría</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl text-gray-900 dark:text-white">Resumen de Ganado por Rancho</CardTitle>
+              <LayoutGrid className="text-primary h-6 w-6" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-              {ganadoStats.map((stat, index) => (
-                <motion.div 
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3, delay: 0.5 + index * 0.1 }}
-                  className="bg-gray-100 dark:bg-gray-700/50 p-4 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700/70 transition-colors"
-                >
-                  <div className="flex justify-center">
-                    <stat.icon className={cn("h-8 w-8", stat.color)} />
-                  </div>
-                  <p className="text-2xl font-bold mt-2 text-gray-900 dark:text-white">{stat.value}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{stat.label}</p>
-                </motion.div>
-              ))}
+            <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <Table>
+                <TableHeader className="bg-gray-100 dark:bg-gray-800">
+                  <TableRow>
+                    <TableHead className="font-bold text-gray-900 dark:text-gray-100">Rancho</TableHead>
+                    <TableHead className="font-bold text-gray-900 dark:text-gray-100">Total Animales</TableHead>
+                    <TableHead className="font-bold text-gray-900 dark:text-gray-100">Hembras</TableHead>
+                    <TableHead className="font-bold text-gray-900 dark:text-gray-100">Machos</TableHead>
+                    <TableHead className="font-bold text-gray-900 dark:text-gray-100">Porcentaje Hembras</TableHead>
+                    <TableHead className="font-bold text-gray-900 dark:text-gray-100">Porcentaje Machos</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {resumenRanchos.map((rancho) => (
+                    <TableRow key={rancho.id_Rancho} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                      <TableCell className="font-medium text-gray-900 dark:text-white">
+                        {rancho.nombreRancho}
+                      </TableCell>
+                      <TableCell className="font-bold text-gray-900 dark:text-white">
+                        {rancho.totalAnimales}
+                      </TableCell>
+                      <TableCell className="text-pink-500 dark:text-pink-300">
+                        {rancho.totalHembras}
+                      </TableCell>
+                      <TableCell className="text-blue-500 dark:text-blue-300">
+                        {rancho.totalMachos}
+                      </TableCell>
+                      <TableCell>
+                        <span className="bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-300 px-2 py-1 rounded-full text-xs">
+                          {rancho.totalAnimales > 0 
+                            ? `${Math.round((rancho.totalHembras / rancho.totalAnimales) * 100)}%` 
+                            : '0%'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2 py-1 rounded-full text-xs">
+                          {rancho.totalAnimales > 0 
+                            ? `${Math.round((rancho.totalMachos / rancho.totalAnimales) * 100)}%` 
+                            : '0%'}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
