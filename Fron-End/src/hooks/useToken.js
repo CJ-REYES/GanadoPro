@@ -25,7 +25,7 @@ export const setToken = (token) => {
 export const clearToken = () => {
   try {
     localStorage.removeItem("token");
-    console.log("Token eliminado de localStorage");
+
   } catch (e) {
     console.error("No se pudo eliminar el token:", e);
   }
@@ -36,7 +36,7 @@ export const setUser = (user) => {
   try {
     if (user) {
       localStorage.setItem('user', JSON.stringify(user));
-      console.log("Usuario guardado en localStorage:", user);
+    
     } else {
       localStorage.removeItem('user');
     }
@@ -58,7 +58,7 @@ export const getUser = () => {
 export const clearUser = () => {
   try {
     localStorage.removeItem('user');
-    console.log("Usuario eliminado de localStorage");
+    
   } catch (e) {
     console.error("No se pudo eliminar el usuario:", e);
   }

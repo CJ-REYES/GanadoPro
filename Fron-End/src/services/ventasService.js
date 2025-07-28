@@ -77,12 +77,14 @@ const transformAnimal = (animal) => ({
 
 const transformOrdenVenta = (orden) => ({
   id: orden.Id_Venta,
-  fechaSalida: new Date(orden.FechaSalida), // Conversión directa a Date
+  fechaSalida: new Date(orden.FechaSalida),
   folioGuiaRemo: orden.FolioGuiaRemo,
   tipoVenta: orden.TipoVenta === 0 ? 'Nacional' : 'Internacional',
   cliente: orden.Cliente,
-  upp: orden.UPP,
+  upp: orden.UPP || "", // Asegurar que se incluya UPP
   estado: orden.Estado,
+  idCliente: orden.Id_Cliente, // Añadir idCliente
+  idRancho: orden.Id_Rancho,   // Añadir idRancho
   lotes: (orden.Lotes || []).map(lote => ({
     id: lote.Id_Lote,
     remO: lote.REMO,
@@ -91,7 +93,6 @@ const transformOrdenVenta = (orden) => ({
   })),
   totalAnimales: (orden.Lotes || []).reduce((sum, lote) => sum + (lote.CantidadAnimales || 0), 0)
 });
-
 
 export const getVentasCompletadas = async () => {
   try {
@@ -122,30 +123,43 @@ export const getOrdenesVenta = async () => {
     throw error;
   }
 };
-
+export const getClientesListaSimple = async () => {
+  try {
+    const response = await fetchWithAuth(`http://localhost:5201/api/Ventas/clientes-lista-simple`);
+    
+    // Verificar y normalizar la respuesta
+    return response.map(cliente => {
+      // Asegurar que las propiedades tengan el formato correcto
+      return {
+        Id_Cliente: cliente.id_Cliente || cliente.Id_Cliente,
+        Name: cliente.name || cliente.Name,
+        Upp: cliente.upp || cliente.Upp
+      };
+    });
+  } catch (error) {
+    console.error('Error al obtener lista simple de clientes:', error);
+    throw error;
+  }
+};
+// Corregir la propiedad UPP en createOrdenVenta
 export const createOrdenVenta = async (ordenData) => {
   try {
-    const tipoVentaNum = ordenData.ventaDto.tipoVenta;
+    // Añadir console.log para depuración
+    
     
     const response = await fetchWithAuth(API_URL, {
       method: 'POST',
       body: JSON.stringify({
         FechaSalida: ordenData.ventaDto.fechaSalida.toISOString(),
         FolioGuiaRemo: ordenData.ventaDto.folioGuiaRemo,
-        TipoVenta: tipoVentaNum,
+        TipoVenta: ordenData.ventaDto.tipoVenta,
         LotesIds: ordenData.ventaDto.lotesIds,
         Id_Cliente: ordenData.ventaDto.idCliente,
-        UPP: ordenData.ventaDto.upp,
         Id_Rancho: ordenData.ventaDto.idRancho
       })
     });
     
-    // Transformar respuesta
-    return {
-      ...response,
-      fechaSalida: new Date(response.FechaSalida),
-      tipoVenta: response.TipoVenta === 0 ? 'Nacional' : 'Internacional'
-    };
+    return response;
   } catch (error) {
     console.error('Error al crear la orden de venta:', error);
     throw error;
@@ -159,11 +173,11 @@ export const updateOrdenVenta = async (id, ordenData) => {
       body: JSON.stringify({
         FechaSalida: ordenData.ventaDto.fechaSalida.toISOString(),
         FolioGuiaRemo: ordenData.ventaDto.folioGuiaRemo,
-        TipoVenta: ordenData.ventaDto.tipoVenta
+        TipoVenta: ordenData.ventaDto.tipoVenta,
+        ActualizarRemoEnLotes: true // Nueva bandera para actualizar REMO
       })
     });
     
-    // CORRECCIÓN: Manejar respuesta nula (204 No Content)
     if (response === null) {
       return null;
     }

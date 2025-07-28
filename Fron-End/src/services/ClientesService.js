@@ -84,6 +84,7 @@ export const createCliente = async (clienteData) => {
   return transformCliente(data);
 };
 
+
 export const updateCliente = async (id, clienteData) => {
   const dataToSend = {
     ...clienteData,
@@ -111,10 +112,10 @@ export const deleteCliente = async (id) => {
 
 // Obtener lista simple de clientes con solo Id y Nombre
 export const getClientesListaSimple = async () => {
-  const clientes = await getClientes();
-  return clientes.map(c => ({
-    Id_Cliente: c.Id_Cliente,
-    Name: c.Name,
-    Propietario: c.Propietario
+  const response = await fetchWithAuth(`${API_URL}/clientes-lista-simple`);
+  return response.map(cliente => ({
+    Id_Cliente: cliente.id_Cliente,
+    Name: cliente.name,
+    Upp: cliente.upp // Asegurar que se obtiene Upp
   }));
 };

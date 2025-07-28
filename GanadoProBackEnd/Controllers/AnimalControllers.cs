@@ -297,6 +297,7 @@ namespace GanadoProBackEnd.Controllers
             animal.ContanciaGarrapaticida = updateDto.ContanciaGarrapaticida ?? animal.ContanciaGarrapaticida;
             animal.FolioTB = updateDto.FolioTB ?? animal.FolioTB;
             animal.ValidacionConside_ID = updateDto.ValidacionConside_ID ?? animal.ValidacionConside_ID;
+            animal.FoliGuiaRemoSalida = updateDto.FoliGuiaRemoSalida ?? animal.FoliGuiaRemoSalida; 
 
             if (updateDto.FierroCliente != null)
                 animal.FierroCliente = Convert.FromBase64String(updateDto.FierroCliente);
@@ -437,6 +438,7 @@ namespace GanadoProBackEnd.Controllers
             public string? Clasificacion { get; set; }
             public int Edad_Meses { get; set; }
             public string? FoliGuiaRemoEntrada { get; set; }
+            public string? FoliGuiaRemoSalida { get; set; }
             public string? UppOrigen { get; set; }
             public string? UppDestino { get; set; }
             public string? FechaIngreso { get; set; }
