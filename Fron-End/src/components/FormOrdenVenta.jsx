@@ -41,7 +41,13 @@ const FormOrdenVenta = ({ onClose, onSave, orden }) => {
         const clientesFiltrados = clientesData.filter(c => c.Id_Cliente);
         setClientes(clientesFiltrados);
         
-        setLotesDisponibles(lotesData);
+        // Unificar el nombre de la propiedad 'remo' a 'REMO' (if it comes differently from API)
+        // Or ensure consistency in the backend. For now, we'll handle it defensively.
+        setLotesDisponibles(lotesData.map(lote => ({
+            ...lote,
+            remo: lote.REMO || lote.remo // Ensure 'remo' is always accessible
+        })));
+        
         setRanchos(ranchosData);
 
         if (ranchosData.length > 0) {
@@ -80,15 +86,21 @@ const FormOrdenVenta = ({ onClose, onSave, orden }) => {
     if (lotesSeleccionados.length > 0) {
       const primerLoteId = lotesSeleccionados[0];
       const lote = lotesDisponibles.find(l => l.id_Lote === primerLoteId);
-      if (lote) {
-        setFolioGuiaRemo(lote.remo.toString());
+      if (lote && (lote.remo || lote.REMO)) { // Check for both remo and REMO defensively
+        setFolioGuiaRemo((lote.remo || lote.REMO).toString());
+      } else {
+        setFolioGuiaRemo(''); // Clear if no valid REMO is found
       }
+    } else {
+        setFolioGuiaRemo(''); // Clear if no lotes are selected
     }
   }, [lotesSeleccionados, lotesDisponibles]);
 
   // Filtrar lotes por REMO
   const lotesFiltrados = lotesDisponibles.filter(lote => 
-    lote.remo.toString().includes(filtroRemo)
+    (lote.remo !== undefined && lote.remo !== null) ? // Ensure remo exists and is not null/undefined
+      lote.remo.toString().includes(filtroRemo) : 
+      false // If remo is null/undefined, don't include it in filtered results
   );
 
   const handleClienteChange = (e) => {
