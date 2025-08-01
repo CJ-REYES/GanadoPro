@@ -14,10 +14,7 @@ import {
   TrendingUp,
   TrendingDown,
   AlertTriangle,
-  Beef,
-  PiggyBank,
-  Baby,
-  ShoppingCart
+  LayoutGrid
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
@@ -47,8 +44,8 @@ import {
   getConteoLotesVendidos,
   getConteoLotesDisponibles
 } from '@/services/loteService';
-import { getRanchos } from '@/services/ranchoService';
-import { useToast } from "@/components/ui/use-toast"; // Importa useToast
+import { getRanchos, getResumenGanado } from '@/services/ranchoService';
+import { useToast } from "@/components/ui/use-toast";
 
 const StatCard = ({ title, value, icon: Icon, color, description, trend }) => (
   <motion.div
@@ -79,7 +76,7 @@ const StatCard = ({ title, value, icon: Icon, color, description, trend }) => (
 
 const DashboardPage = () => {
   const [open, setOpen] = useState(false);
-  const [openOrdenVenta, setOpenOrdenVenta] = useState(false); // Nuevo estado para el diálogo de orden de venta
+  const [openOrdenVenta, setOpenOrdenVenta] = useState(false);
   const [loadingStats, setLoadingStats] = useState(true);
   const [errorStats, setErrorStats] = useState(null);
   const [stats, setStats] = useState({
@@ -88,24 +85,22 @@ const DashboardPage = () => {
     lotesVendidos: 0,
     lotesDisponibles: 0
   });
-
+  
+  const [resumenRanchos, setResumenRanchos] = useState([]);
   const [ranchos, setRanchos] = useState([]);
   const [loadingRanchos, setLoadingRanchos] = useState(true);
   const [errorRanchos, setErrorRanchos] = useState(null);
 
-  const { toast } = useToast(); // Inicializa el hook toast
+  const { toast } = useToast();
 
   const handleSuccess = (nuevoAnimal) => {
     console.log("Animal registrado con éxito:", nuevoAnimal);
-    setOpen(false); // Cierra el diálogo después del registro
-    cargarDatosPrincipales(); // Recarga las estadísticas del dashboard
-
-    // Agregamos el mensaje de éxito aquí
+    setOpen(false);
+    cargarDatosPrincipales();
     toast({
       title: "¡Éxito!",
       description: "El animal ha sido registrado correctamente.",
-      variant: "success", // Si tienes una variante 'success' configurada en tu `Toaster`
-      // duration: 3000, // Opcional: duración en milisegundos (ej. 3 segundos)
+      variant: "success",
     });
   };
 
@@ -122,12 +117,14 @@ const DashboardPage = () => {
         conteoAnimalesStock,
         conteoAnimalesVendidos,
         conteoLotesVendidos,
-        conteoLotesDisponibles
+        conteoLotesDisponibles,
+        resumenRanchosData
       ] = await Promise.all([
         getConteoAnimalesEnStock(),
         getConteoAnimalesVendidos(),
         getConteoLotesVendidos(),
-        getConteoLotesDisponibles()
+        getConteoLotesDisponibles(),
+        getResumenGanado()
       ]);
 
       setStats({
@@ -136,6 +133,8 @@ const DashboardPage = () => {
         lotesVendidos: conteoLotesVendidos,
         lotesDisponibles: conteoLotesDisponibles
       });
+
+      setResumenRanchos(resumenRanchosData);
 
     } catch (err) {
       console.error('Error cargando datos del dashboard:', err);
@@ -188,7 +187,7 @@ const DashboardPage = () => {
       description: "Venta de 5 novillos a Comprador X",
       time: "Hace 2 horas",
       status: "Completado",
-      action: { label: "Crear Orden de Venta", onClick: () => alert('Creando orden de venta...') }
+      action: { label: "Crear Orden de Venta", onClick: () => setOpenOrdenVenta(true) }
     },
     {
       id: 2,
@@ -217,13 +216,6 @@ const DashboardPage = () => {
     },
   ];
 
-  const ganadoStats = [
-    { value: "600", label: "Machos", icon: Beef, color: "text-blue-500" },
-    { value: "550", label: "Hembras", icon: PiggyBank, color: "text-pink-500" },
-    { value: "84", label: "Terneros", icon: Baby, color: "text-yellow-500" },
-    { value: "120", label: "Vendidos (Últ. Mes)", icon: ShoppingCart, color: "text-green-500" },
-  ];
-
   const statsCards = [
     {
       title: "Animales en Stock",
@@ -231,7 +223,6 @@ const DashboardPage = () => {
       icon: Package,
       color: "text-primary",
       description: "Cabezas activas"
-
     },
     {
       title: "Animales Vendidos",
@@ -239,7 +230,6 @@ const DashboardPage = () => {
       icon: DollarSign,
       color: "text-green-400",
       description: "Total vendidos",
-
     },
     {
       title: "Lotes Disponibles",
@@ -247,7 +237,6 @@ const DashboardPage = () => {
       icon: Users,
       color: "text-orange-400",
       description: "Lotes en stock",
-
     },
     {
       title: "Lotes Vendidos",
@@ -255,7 +244,6 @@ const DashboardPage = () => {
       icon: Truck,
       color: "text-blue-400",
       description: "Total vendidos",
-
     },
   ];
 
@@ -276,7 +264,7 @@ const DashboardPage = () => {
   }
 
   return (
-    <div className="space-y-6  text-gray-900 dark:text-gray-100 min-h-screen p-6">
+    <div className="space-y-6 text-gray-900 dark:text-gray-100 min-h-screen p-6">
       <motion.h1
         initial={{ opacity: 0, y: -20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -407,8 +395,6 @@ const DashboardPage = () => {
                     onClose={() => setOpenOrdenVenta(false)}
                     onSave={(ordenCreada) => {
                       setOpenOrdenVenta(false);
-                      // Aquí puedes añadir lógica adicional si necesitas actualizar el dashboard
-                      // después de crear una orden, como recargar datos
                       toast({
                         title: "¡Éxito!",
                         description: "La orden de venta ha sido creada correctamente.",
@@ -439,34 +425,65 @@ const DashboardPage = () => {
         </motion.div>
       </div>
 
-      {/* Resumen de Ganado */}
+      {/* Resumen de Ganado por Rancho */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5, delay: 0.4 }}
-        className="pt-4"
       >
-        <Card className="bg-card/80 backdrop-blur-sm hover:shadow-primary/20 hover:shadow-lg transition-all duration-300 h-full flex flex-col">
+        <Card className="bg-card/80 backdrop-blur-sm hover:shadow-primary/20 hover:shadow-lg transition-all duration-300 mt-6">
           <CardHeader>
-            <CardTitle className="text-xl text-gray-900 dark:text-white">Resumen de Ganado por Categoría</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-xl text-gray-900 dark:text-white">Resumen de Ganado por Rancho</CardTitle>
+              <LayoutGrid className="text-primary h-6 w-6" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-center">
-              {ganadoStats.map((stat, index) => (
-                <motion.div
-                  key={index}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1 }}
-                  transition={{ duration: 0.3, delay: 0.5 + index * 0.1 }}
-                  className="bg-gray-100 dark:bg-gray-700/50 p-4 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700/70 transition-colors"
-                >
-                  <div className="flex justify-center">
-                    <stat.icon className={cn("h-8 w-8", stat.color)} />
-                  </div>
-                  <p className="text-2xl font-bold mt-2 text-gray-900 dark:text-white">{stat.value}</p>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{stat.label}</p>
-                </motion.div>
-              ))}
+            <div className="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+              <Table>
+                <TableHeader className="bg-gray-100 dark:bg-gray-800">
+                  <TableRow>
+                    <TableHead className="font-bold text-gray-900 dark:text-gray-100">Rancho</TableHead>
+                    <TableHead className="font-bold text-gray-900 dark:text-gray-100">Total Animales</TableHead>
+                    <TableHead className="font-bold text-gray-900 dark:text-gray-100">Hembras</TableHead>
+                    <TableHead className="font-bold text-gray-900 dark:text-gray-100">Machos</TableHead>
+                    <TableHead className="font-bold text-gray-900 dark:text-gray-100">% Hembras</TableHead>
+                    <TableHead className="font-bold text-gray-900 dark:text-gray-100">% Machos</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {resumenRanchos.map((rancho) => (
+                    <TableRow key={rancho.id_Rancho} className="border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                      <TableCell className="font-medium text-gray-900 dark:text-white">
+                        {rancho.nombreRancho}
+                      </TableCell>
+                      <TableCell className="font-bold text-gray-900 dark:text-white">
+                        {rancho.totalAnimales}
+                      </TableCell>
+                      <TableCell className="text-pink-500 dark:text-pink-300">
+                        {rancho.totalHembras}
+                      </TableCell>
+                      <TableCell className="text-blue-500 dark:text-blue-300">
+                        {rancho.totalMachos}
+                      </TableCell>
+                      <TableCell>
+                        <span className="bg-pink-100 dark:bg-pink-900/30 text-pink-800 dark:text-pink-300 px-2 py-1 rounded-full text-xs">
+                          {rancho.totalAnimales > 0 
+                            ? `${Math.round((rancho.totalHembras / rancho.totalAnimales) * 100)}%` 
+                            : '0%'}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className="bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-300 px-2 py-1 rounded-full text-xs">
+                          {rancho.totalAnimales > 0 
+                            ? `${Math.round((rancho.totalMachos / rancho.totalAnimales) * 100)}%` 
+                            : '0%'}
+                        </span>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
