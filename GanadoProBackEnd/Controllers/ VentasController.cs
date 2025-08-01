@@ -8,8 +8,9 @@ using System.Linq;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using System;
-using System.Threading.Tasks;
 using System.Collections.Generic;
+using System.Threading.Tasks;
+using GanadoProBackEnd.Services;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -19,32 +20,34 @@ namespace GanadoProBackEnd.Controllers
     public class VentasController : ControllerBase
     {
         private readonly MyDbContext _context;
+        private readonly IActividadService _actividadService;
 
-        public VentasController(MyDbContext context) => _context = context;
-
-        // Método estático reutilizable para actualizar estado de venta
-public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
-{
-    if (venta.Estado == "Programada" && venta.FechaSalida <= DateTime.Today)
-    {
-        venta.Estado = "Completada";
-        foreach (var lote in venta.LotesVendidos)
+        public VentasController(MyDbContext context, IActividadService actividadService)
         {
-            lote.Estado = "Vendido";
-            foreach (var animal in lote.Animales)
+            _context = context;
+            _actividadService = actividadService;
+        }
+
+        public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
+        {
+            if (venta.Estado == "Programada" && venta.FechaSalida <= DateTime.Today)
             {
-                animal.Estado = "Vendido"; // Solo aquí -> Vendido
+                venta.Estado = "Completada";
+                foreach (var lote in venta.LotesVendidos)
+                {
+                    lote.Estado = "Vendido";
+                    foreach (var animal in lote.Animales)
+                    {
+                        animal.Estado = "Vendido";
+                    }
+                }
+                await context.SaveChangesAsync();
             }
         }
-        await context.SaveChangesAsync();
-    }
-}
 
-        // GET: api/Ventas (todas las ventas programadas o disponibles)
         [HttpGet]
         public async Task<ActionResult<IEnumerable<VentaResponseDto>>> GetVentas()
         {
-            // Actualizar estado de ventas antes de mostrar
             await ActualizarVentasPendientes();
             
             var ventas = await _context.Ventas
@@ -58,7 +61,6 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
             return ventas.Select(v => MapToDto(v)).ToList();
         }
 
-        // Actualiza todas las ventas pendientes que cumplan con la fecha
         private async Task ActualizarVentasPendientes()
         {
             var ventasPendientes = await _context.Ventas
@@ -73,7 +75,6 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
             }
         }
 
-        // GET: api/Ventas/LotesVendidos
         [HttpGet("LotesVendidos")]
         public async Task<ActionResult<IEnumerable<LoteVendidoDto>>> GetLotesVendidos()
         {
@@ -97,23 +98,18 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
             }).ToList();
         }
 
-        // POST: api/Ventas
         [HttpPost]
         public async Task<ActionResult<VentaResponseDto>> ProgramarVenta([FromBody] CreateVentaDto ventaDto)
         {
-            // Obtener ID de usuario autenticado
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
             
-            // Validar cliente por ID
             var cliente = await _context.Clientes.FirstOrDefaultAsync(c => c.Id_Cliente == ventaDto.Id_Cliente);
             if (cliente == null)
                 return BadRequest("El cliente no existe");
 
-            // Validar que la UPP pertenece a un cliente
             if (cliente.Rol != "Cliente")
                 return BadRequest("La UPP proporcionada no pertenece a un cliente");
 
-            // Validar rancho
             if (!await _context.Ranchos.AnyAsync(r => r.Id_Rancho == ventaDto.Id_Rancho))
                 return BadRequest("El rancho no existe");
 
@@ -129,7 +125,6 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
             if (!validationResult.IsValid)
                 return BadRequest(validationResult.ErrorMessage);
 
-            // Actualizar lotes y animales
             foreach (var lote in lotes)
             {
                 lote.Fecha_Salida = ventaDto.FechaSalida;
@@ -142,7 +137,7 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
                     animal.FoliGuiaRemoSalida = ventaDto.FolioGuiaRemo;
                     animal.Id_Cliente = cliente.Id_Cliente;
                     animal.Estado = "EnProceso";
-                    animal.UppDestino = cliente.Upp; // AÑADIR ESTA LÍNEA
+                    animal.UppDestino = cliente.Upp;
                 }
             }
 
@@ -162,7 +157,15 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
             _context.Ventas.Add(venta);
             await _context.SaveChangesAsync();
 
-            // Verificar si la fecha es pasada y actualizar estado
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Venta",
+                descripcion: $"Venta programada de {lotes.Sum(l => l.Animales?.Count ?? 0)} animales",
+                estado: "Programada",
+                accion: "Ver detalle de venta",
+                entidadId: venta.Id_Venta,
+                tipoEntidad: "Venta"
+            );
+
             await ActualizarEstadoVenta(_context, venta);
 
             var ventaConRelaciones = await _context.Ventas
@@ -174,8 +177,6 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
             return CreatedAtAction(nameof(GetVenta), new { id = venta.Id_Venta }, MapToDto(ventaConRelaciones));
         }
 
-        // PUT: api/Ventas/5
-        // PUT: api/Ventas/5
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateVenta(int id, [FromBody] UpdateVentaDto ventaDto)
         {
@@ -196,18 +197,16 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
             var fechaOriginal = venta.FechaSalida;
             var folioOriginal = venta.FolioGuiaRemo;
             
-            // Actualizar propiedades
             venta.FechaSalida = ventaDto.FechaSalida;
             venta.FolioGuiaRemo = ventaDto.FolioGuiaRemo;
+            
             if (ventaDto.TipoVenta.HasValue)
                 venta.TipoVenta = ventaDto.TipoVenta.Value;
             else
                 return BadRequest("El tipo de venta es requerido.");
 
-            // Si cambió el folio guía remo, actualizar lotes y animales
             if (folioOriginal != ventaDto.FolioGuiaRemo)
             {
-                // Intentar convertir el nuevo folio a entero para el lote
                 if (!int.TryParse(ventaDto.FolioGuiaRemo, out int nuevoRemo))
                 {
                     return BadRequest("El folio guía remo debe ser un número entero.");
@@ -224,7 +223,6 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
                 }
             }
 
-            // Actualizar animales con nueva fecha y folio
             foreach (var lote in venta.LotesVendidos)
             {
                 lote.Fecha_Salida = ventaDto.FechaSalida;
@@ -239,7 +237,14 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
             _context.Entry(venta).State = EntityState.Modified;
             await _context.SaveChangesAsync();
             
-            // Si la fecha cambió a una pasada, actualizar estado
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Venta",
+                descripcion: $"Venta actualizada: {venta.Id_Venta}",
+                estado: venta.Estado,
+                entidadId: venta.Id_Venta,
+                tipoEntidad: "Venta"
+            );
+            
             if (fechaOriginal != ventaDto.FechaSalida && ventaDto.FechaSalida <= DateTime.Today)
             {
                 await ActualizarEstadoVenta(_context, venta);
@@ -248,8 +253,6 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
             return NoContent();
         }
 
-
-        // DELETE: api/Ventas/5
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteVenta(int id)
         {
@@ -264,7 +267,6 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
             if (venta.Estado != "Programada")
                 return BadRequest("Solo se pueden eliminar ventas en estado 'Programada'");
 
-            // Restaurar estado de lotes y animales
             foreach (var lote in venta.LotesVendidos)
             {
                 lote.Estado = "Disponible";
@@ -273,7 +275,7 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
                 
                 foreach (var animal in lote.Animales)
                 {
-                    animal.Estado = "EnStock"; // Cambiar estado a EnStock
+                    animal.Estado = "EnStock";
                     animal.FechaSalida = null;
                     animal.FoliGuiaRemoSalida = null;
                     animal.Id_Cliente = null;
@@ -283,11 +285,18 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
             venta.LotesVendidos.Clear();
             _context.Ventas.Remove(venta);
             await _context.SaveChangesAsync();
+            
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Venta",
+                descripcion: $"Venta cancelada: {venta.Id_Venta}",
+                estado: "Cancelada",
+                entidadId: venta.Id_Venta,
+                tipoEntidad: "Venta"
+            );
 
             return NoContent();
         }
 
-        // GET: api/Ventas/5 (Venta específica por ID)
         [HttpGet("{id}")]
         public async Task<ActionResult<VentaResponseDto>> GetVenta(int id)
         {
@@ -297,7 +306,6 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
                     .ThenInclude(l => l.Rancho)
                 .FirstOrDefaultAsync(v => v.Id_Venta == id);
 
-            // Actualizar estado si es necesario
             if (venta != null && venta.Estado == "Programada" && venta.FechaSalida <= DateTime.Today)
             {
                 await ActualizarEstadoVenta(_context, venta);
@@ -311,7 +319,6 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
             return venta == null ? NotFound() : Ok(MapToDto(venta));
         }
 
-        // GET: api/Ventas/AnimalesVendidos
         [HttpGet("AnimalesVendidos")]
         public async Task<ActionResult<IEnumerable<AnimalVendidoDto>>> GetAnimalesVendidos()
         {
@@ -342,7 +349,6 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
             return Ok(animalesVendidos);
         }
 
-        // GET: api/Ventas/VentasCompletadas
         [HttpGet("VentasCompletadas")]
         public async Task<ActionResult<IEnumerable<VentaCompletadaDto>>> GetVentasCompletadas()
         {
@@ -363,7 +369,6 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
                 Id_Venta = v.Id_Venta,
                 FechaSalida = v.FechaSalida ?? DateTime.MinValue,
                 FolioGuiaRemo = v.FolioGuiaRemo ?? "",
-                // Convertir tipo de venta a texto
                 TipoVenta = v.TipoVenta == TipoVenta.Internacional ? "Internacional" : "Nacional",
                 Estado = v.Estado,
                 Cliente = v.Cliente?.Name ?? "",
@@ -375,7 +380,6 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
                     Comunidad = l.Rancho?.Ubicacion ?? "",
                     CantidadAnimales = l.Animales?.Count ?? 0,
                     Estado = l.Estado,
-                    // Cargar animales directamente para evitar llamada adicional
                     Animales = l.Animales?.Select(a => new AnimalVendidoDto
                     {
                         Id_Animal = a.Id_Animal,
@@ -389,7 +393,6 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
             }).ToList();
         }
 
-        // Agregar nuevo endpoint para lotes disponibles
         [HttpGet("lotes-disponibles")]
         public async Task<ActionResult<IEnumerable<LoteDisponibleDto>>> GetLotesDisponibles()
         {
@@ -408,66 +411,67 @@ public static async Task ActualizarEstadoVenta(MyDbContext context, Venta venta)
             return Ok(lotes);
         }
 
-[HttpGet("Lotes/{id}/Animales")]
-public async Task<ActionResult<IEnumerable<AnimalVendidoDto>>> GetAnimalesPorLote(int id)
-{
-    // Eliminar filtro por estado
-    var animales = await _context.Animales
-        .Where(a => a.Id_Lote == id) // <- Solo filtrar por ID de lote
-        .ToListAsync();
-
-    return animales.Select(a => new AnimalVendidoDto
-    {
-        Id_Animal = a.Id_Animal,
-        Arete = a.Arete,
-        Peso = a.Peso,
-        Sexo = a.Sexo,
-        Raza = a.Raza,
-        FechaSalida = a.FechaSalida
-    }).ToList();
-}
-
-[HttpDelete("Completadas/{id}")]
-public async Task<IActionResult> DeleteVentaCompletada(int id)
-{
-    var venta = await _context.Ventas
-        .Include(v => v.LotesVendidos)
-            .ThenInclude(l => l.Animales)
-        .FirstOrDefaultAsync(v => v.Id_Venta == id);
-
-    if (venta == null)
-        return NotFound();
-
-    if (venta.Estado != "Completada")
-        return BadRequest("Solo se pueden eliminar ventas en estado 'Completada'");
-
-    // Restaurar estado de lotes y animales
-    foreach (var lote in venta.LotesVendidos.ToList())
-    {
-        lote.Estado = "Disponible";
-        lote.Fecha_Salida = null;
-        lote.Id_Cliente = null;
-        
-        foreach (var animal in lote.Animales)
+        [HttpGet("Lotes/{id}/Animales")]
+        public async Task<ActionResult<IEnumerable<AnimalVendidoDto>>> GetAnimalesPorLote(int id)
         {
-            animal.Estado = "EnStock";
-            animal.FechaSalida = null;
-            animal.FoliGuiaRemoSalida = null;
-            animal.Id_Cliente = null;
+            var animales = await _context.Animales
+                .Where(a => a.Id_Lote == id)
+                .ToListAsync();
+
+            return animales.Select(a => new AnimalVendidoDto
+            {
+                Id_Animal = a.Id_Animal,
+                Arete = a.Arete,
+                Peso = a.Peso,
+                Sexo = a.Sexo,
+                Raza = a.Raza,
+                FechaSalida = a.FechaSalida
+            }).ToList();
         }
-    }
-    
 
-    // Eliminar relación con lotes sin borrar la venta
+        [HttpDelete("Completadas/{id}")]
+        public async Task<IActionResult> DeleteVentaCompletada(int id)
+        {
+            var venta = await _context.Ventas
+                .Include(v => v.LotesVendidos)
+                    .ThenInclude(l => l.Animales)
+                .FirstOrDefaultAsync(v => v.Id_Venta == id);
+
+            if (venta == null)
+                return NotFound();
+
+            if (venta.Estado != "Completada")
+                return BadRequest("Solo se pueden eliminar ventas en estado 'Completada'");
+
+            foreach (var lote in venta.LotesVendidos.ToList())
+            {
+                lote.Estado = "Disponible";
+                lote.Fecha_Salida = null;
+                lote.Id_Cliente = null;
+                
+                foreach (var animal in lote.Animales)
+                {
+                    animal.Estado = "EnStock";
+                    animal.FechaSalida = null;
+                    animal.FoliGuiaRemoSalida = null;
+                    animal.Id_Cliente = null;
+                }
+            }
+            
             venta.LotesVendidos.Clear();
-    
-    // Cambiar estado de la venta a "Cancelada" en lugar de borrarla
-    venta.Estado = "Cancelada";
-    
-    await _context.SaveChangesAsync();
+            venta.Estado = "Cancelada";
+            await _context.SaveChangesAsync();
+            
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Venta",
+                descripcion: $"Venta completada eliminada: {venta.Id_Venta}",
+                estado: "Eliminada",
+                entidadId: venta.Id_Venta,
+                tipoEntidad: "Venta"
+            );
 
-    return NoContent();
-}
+            return NoContent();
+        }
 
         private static VentaResponseDto MapToDto(Venta venta)
         {
@@ -489,37 +493,25 @@ public async Task<IActionResult> DeleteVentaCompletada(int id)
                 }).ToList() ?? new List<LoteInfoDto>()
             };
         }
-// En el método que devuelve la lista simple de clientes
-[HttpGet("clientes-lista-simple")]
-public async Task<ActionResult<IEnumerable<ClienteSimpleDto>>> GetClientesListaSimple()
-{
- 
-    
+
+        [HttpGet("clientes-lista-simple")]
+        public async Task<ActionResult<IEnumerable<ClienteSimpleDto>>> GetClientesListaSimple()
+        {
             return await _context.Clientes
-               .Where(c => 
-                         (c.Rol == "Cliente" || c.Rol == "Cliente/Comprador"))
+               .Where(c => (c.Rol == "Cliente" || c.Rol == "Cliente/Comprador"))
                .Select(c => new ClienteSimpleDto
                {
                    Id_Cliente = c.Id_Cliente,
                    Name = c.Name,
                    Upp = c.Upp,
-                   
                })
                .ToListAsync();
-}
+        }
 
-// Añadir nuevo DTO
-public class ClienteSimpleDto
-{
-    public int Id_Cliente { get; set; }
-    public string Name { get; set; } = "";
-    public string Upp { get; set; } = ""; // NUEVO CAMPO
-}
         private ValidationResult ValidarAnimalesParaVenta(List<Lote> lotes, TipoVenta tipoVenta)
         {
             var animales = lotes.SelectMany(l => l.Animales).ToList();
 
-            // Solo validar para venta internacional
             if (tipoVenta == TipoVenta.Internacional)
             {
                 var animalesInvalidos = animales
@@ -538,134 +530,133 @@ public class ClienteSimpleDto
 
             return ValidationResult.Valid();
         }
-    }
 
-    // public enum TipoVenta
-    // {
-    //     Nacional,
-    //     Internacional
-    // }
+        public class ClienteSimpleDto
+        {
+            public int Id_Cliente { get; set; }
+            public string Name { get; set; } = "";
+            public string Upp { get; set; } = "";
+        }
 
-    public class CreateVentaDto
-    {
-        [Required]
-        public DateTime FechaSalida { get; set; }
-        
-        [Required]
-        public string FolioGuiaRemo { get; set; } = "";
-        
-        [Required]
-        public GanadoProBackEnd.Models.TipoVenta TipoVenta { get; set; }
-        
-        [Required]
-        public List<int> LotesIds { get; set; } = new List<int>();
-        
-        [Required]
-        public int Id_Cliente { get; set; }
+        public class CreateVentaDto
+        {
+            [Required]
+            public DateTime FechaSalida { get; set; }
+            
+            [Required]
+            public string FolioGuiaRemo { get; set; } = "";
+            
+            [Required]
+            public GanadoProBackEnd.Models.TipoVenta TipoVenta { get; set; }
+            
+            [Required]
+            public List<int> LotesIds { get; set; } = new List<int>();
+            
+            [Required]
+            public int Id_Cliente { get; set; }
 
-        [Required]
-        public int Id_Rancho { get; set; }
+            [Required]
+            public int Id_Rancho { get; set; }
+        }
 
-    }
+        public class UpdateVentaDto
+        {
+            [Required]
+            public DateTime FechaSalida { get; set; }
+            
+            [Required]
+            public string FolioGuiaRemo { get; set; } = "";
+            
+            [Required]
+            public TipoVenta? TipoVenta { get; set; }
+        }
 
-    public class UpdateVentaDto
-    {
-        [Required]
-        public DateTime FechaSalida { get; set; }
-        
-        [Required]
-        public string FolioGuiaRemo { get; set; } = "";
-        
-        [Required]
-        public TipoVenta? TipoVenta { get; set; }
-    }
+        public class VentaResponseDto
+        {
+            public int Id_Venta { get; set; }
+            public DateTime FechaSalida { get; set; }
+            public string FolioGuiaRemo { get; set; } = "";
+            public string Estado { get; set; } = "";
+            public string Cliente { get; set; } = "";
+            public string UPP { get; set; } = "";
+            public TipoVenta TipoVenta { get; set; }
+            public List<LoteInfoDto> Lotes { get; set; } = new List<LoteInfoDto>();
+        }
 
-    public class VentaResponseDto
-    {
-        public int Id_Venta { get; set; }
-        public DateTime FechaSalida { get; set; }
-        public string FolioGuiaRemo { get; set; } = "";
-        public string Estado { get; set; } = "";
-        public string Cliente { get; set; } = "";
-        public string UPP { get; set; } = "";
-        public TipoVenta TipoVenta { get; set; }
-        public List<LoteInfoDto> Lotes { get; set; } = new List<LoteInfoDto>();
-    }
+        public class LoteInfoDto
+        {
+            public int Id_Lote { get; set; }
+            public int REMO { get; set; }
+            public string Comunidad { get; set; } = "";
+            public string Estado { get; set; } = "";
+        }
 
-    public class LoteInfoDto
-    {
-        public int Id_Lote { get; set; }
-        public int REMO { get; set; }
-        public string Comunidad { get; set; } = "";
-        public string Estado { get; set; } = "";
-    }
+        public class LoteVendidoDto
+        {
+            public int Id_Lote { get; set; }
+            public string Nombre { get; set; } = "";
+            public int REMO { get; set; }
+            public string Comunidad { get; set; } = "";
+            public string UPP_Cliente { get; set; } = "";
+            public string Nombre_Cliente { get; set; } = "";
+            public DateTime Fecha_Venta { get; set; }
+            public string Estado { get; set; } = "";
+        }
 
-    public class LoteVendidoDto
-    {
-        public int Id_Lote { get; set; }
-        public string Nombre { get; set; } = "";
-        public int REMO { get; set; }
-        public string Comunidad { get; set; } = "";
-        public string UPP_Cliente { get; set; } = "";
-        public string Nombre_Cliente { get; set; } = "";
-        public DateTime Fecha_Venta { get; set; }
-        public string Estado { get; set; } = "";
-    }
+        public class AnimalVendidoDto
+        {
+            public int Id_Animal { get; set; }
+            public string Arete { get; set; } = "";
+            public int Peso { get; set; }
+            public string Sexo { get; set; } = "";
+            public string Raza { get; set; } = "";
+            public DateTime? FechaIngreso { get; set; }
+            public DateTime? FechaSalida { get; set; }
+            public string Estado { get; set; } = "";
+            public int? Id_Lote { get; set; }
+            public string NombreLote { get; set; } = "";
+            public string Comunidad { get; set; } = "";
+            public string UPP_Cliente { get; set; } = "";
+        }
 
-    public class AnimalVendidoDto
-    {
-        public int Id_Animal { get; set; }
-        public string Arete { get; set; } = "";
-        public int Peso { get; set; }
-        public string Sexo { get; set; } = "";
-        public string Raza { get; set; } = "";
-        public DateTime? FechaIngreso { get; set; }
-        public DateTime? FechaSalida { get; set; }
-        public string Estado { get; set; } = "";
-        public int? Id_Lote { get; set; }
-        public string NombreLote { get; set; } = "";
-        public string Comunidad { get; set; } = "";
-        public string UPP_Cliente { get; set; } = "";
-    }
+        public class VentaCompletadaDto
+        {
+            public int Id_Venta { get; set; }
+            public DateTime FechaSalida { get; set; }
+            public string FolioGuiaRemo { get; set; } = "";
+            public string TipoVenta { get; set; } = "";
+            public string Estado { get; set; } = "";
+            public string Cliente { get; set; } = "";
+            public string UPP { get; set; } = "";
+            public List<LoteVendidoInfoDto> Lotes { get; set; } = new List<LoteVendidoInfoDto>();
+        }
 
-    public class VentaCompletadaDto
-    {
-        public int Id_Venta { get; set; }
-        public DateTime FechaSalida { get; set; }
-        public string FolioGuiaRemo { get; set; } = "";
-        public string TipoVenta { get; set; } = "";
-        public string Estado { get; set; } = "";
-        public string Cliente { get; set; } = "";
-        public string UPP { get; set; } = "";
-        public List<LoteVendidoInfoDto> Lotes { get; set; } = new List<LoteVendidoInfoDto>();
-    }
+        public class LoteVendidoInfoDto
+        {
+            public int Id_Lote { get; set; }
+            public int REMO { get; set; }
+            public string Comunidad { get; set; } = "";
+            public int CantidadAnimales { get; set; }
+            public string Estado { get; set; } = "";
+            public List<AnimalVendidoDto> Animales { get; set; } = new List<AnimalVendidoDto>();
+        }
 
-    public class LoteVendidoInfoDto
-    {
-        public int Id_Lote { get; set; }
-        public int REMO { get; set; }
-        public string Comunidad { get; set; } = "";
-        public int CantidadAnimales { get; set; }
-        public string Estado { get; set; } = "";
-        public List<AnimalVendidoDto> Animales { get; set; } = new List<AnimalVendidoDto>();
-    }
+        public class ValidationResult
+        {
+            public bool IsValid { get; set; }
+            public string? ErrorMessage { get; set; }
 
-    public class ValidationResult
-    {
-        public bool IsValid { get; set; }
-        public string? ErrorMessage { get; set; }
+            public static ValidationResult Valid() => new ValidationResult { IsValid = true };
+            public static ValidationResult Invalid(string error) =>
+                new ValidationResult { IsValid = false, ErrorMessage = error };
+        }
 
-        public static ValidationResult Valid() => new ValidationResult { IsValid = true };
-        public static ValidationResult Invalid(string error) =>
-            new ValidationResult { IsValid = false, ErrorMessage = error };
-    }
-
-    // DTO para lotes disponibles
-    public class LoteDisponibleDto
-    {
-        public int Id_Lote { get; set; }
-        public int REMO { get; set; }
-        public string Comunidad { get; set; } = "";
-        public int CantidadAnimales { get; set; }
+        public class LoteDisponibleDto
+        {
+            public int Id_Lote { get; set; }
+            public int REMO { get; set; }
+            public string Comunidad { get; set; } = "";
+            public int CantidadAnimales { get; set; }
+        }
     }
 }

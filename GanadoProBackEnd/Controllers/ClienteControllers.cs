@@ -3,13 +3,13 @@ using System.ComponentModel.DataAnnotations;
 using System.Linq;
 using System.Threading.Tasks;
 using GanadoProBackEnd.Data;
-using GanadoProBackEnd.DTOs;
 using GanadoProBackEnd.Models;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using MySqlConnector;
 using System;
 using Microsoft.AspNetCore.Authorization;
+using GanadoProBackEnd.Services;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -19,14 +19,15 @@ namespace GanadoProBackEnd.Controllers
     public class ClientesController : ControllerBase
     {
         private readonly MyDbContext _context;
+        private readonly IActividadService _actividadService;
 
-        public ClientesController(MyDbContext context)
+        public ClientesController(MyDbContext context, IActividadService actividadService)
         {
             _context = context;
+            _actividadService = actividadService;
         }
-        [HttpGet]
-       
 
+        [HttpGet]
         public async Task<ActionResult<IEnumerable<ClienteResponseDTO>>> GetClientes()
         {
             return await _context.Clientes
@@ -46,9 +47,7 @@ namespace GanadoProBackEnd.Controllers
                 .ToListAsync();
         }
 
-        // POST: api/Clientes
         [HttpPost]
-      
         public async Task<ActionResult<ClienteResponseDTO>> PostCliente([FromBody] ClienteCreateDTO clienteDTO)
         {
             if (clienteDTO == null)
@@ -56,21 +55,18 @@ namespace GanadoProBackEnd.Controllers
                 return BadRequest("El cuerpo de la solicitud no puede estar vacío");
             }
 
-            // Validar que el usuario existe
             var usuario = await _context.Users.FindAsync(clienteDTO.Id_User);
             if (usuario == null)
             {
                 return BadRequest($"El usuario con ID {clienteDTO.Id_User} no existe");
             }
 
-            // Validar rol permitido
             var validRoles = new[] { "Cliente", "Productor" };
             if (string.IsNullOrWhiteSpace(clienteDTO.Rol) || !validRoles.Contains(clienteDTO.Rol))
             {
                 return BadRequest("El Rol debe ser 'Cliente' o 'Productor'");
             }
 
-            // Crear instancia Clientes
             var cliente = new Clientes
             {
                 Id_User = clienteDTO.Id_User,
@@ -84,7 +80,6 @@ namespace GanadoProBackEnd.Controllers
                 Rol = clienteDTO.Rol.Trim()
             };
 
-            // Validar modelo
             var validationContext = new ValidationContext(cliente);
             var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
             if (!Validator.TryValidateObject(cliente, validationContext, validationResults, true))
@@ -92,7 +87,6 @@ namespace GanadoProBackEnd.Controllers
                 return BadRequest(validationResults);
             }
 
-            // Manejo transaccional
             await using var transaction = await _context.Database.BeginTransactionAsync();
             try
             {
@@ -100,7 +94,14 @@ namespace GanadoProBackEnd.Controllers
                 await _context.SaveChangesAsync();
                 await transaction.CommitAsync();
 
-                // Devolver DTO con datos del cliente creado
+                await _actividadService.RegistrarActividadAsync(
+                    tipo: "Registro",
+                    descripcion: $"Nuevo cliente creado: {clienteDTO.Name}",
+                    estado: "Completado",
+                    entidadId: cliente.Id_Cliente,
+                    tipoEntidad: "Cliente"
+                );
+
                 var clienteResponse = new ClienteResponseDTO
                 {
                     Id_Cliente = cliente.Id_Cliente,
@@ -125,9 +126,9 @@ namespace GanadoProBackEnd.Controllers
                 {
                     switch (mySqlEx.Number)
                     {
-                        case 1452: // FK constraint fails en MySQL
+                        case 1452:
                             return BadRequest("Error de relación: " + mySqlEx.Message);
-                        case 1062: // Duplicate entry en MySQL
+                        case 1062:
                             return Conflict("Registro duplicado: " + mySqlEx.Message);
                         default:
                             return StatusCode(500, $"Error de base de datos (Código: {mySqlEx.Number}): {mySqlEx.Message}");
@@ -143,9 +144,7 @@ namespace GanadoProBackEnd.Controllers
             }
         }
 
-        // GET: api/Clientes/5
         [HttpGet("{id}")]
-       
         public async Task<ActionResult<ClienteResponseDTO>> GetCliente(int id)
         {
             var cliente = await _context.Clientes.FindAsync(id);
@@ -170,9 +169,7 @@ namespace GanadoProBackEnd.Controllers
             };
         }
 
-        // PUT: api/Clientes/5
         [HttpPut("{id}")]
- 
         public async Task<IActionResult> PutCliente(int id, [FromBody] ClienteUpdateDTO clienteDTO)
         {
             if (clienteDTO == null)
@@ -186,13 +183,11 @@ namespace GanadoProBackEnd.Controllers
                 return NotFound();
             }
 
-            // Validar que el rol es válido si se está actualizando
             if (clienteDTO.Rol != null && clienteDTO.Rol != "Cliente" && clienteDTO.Rol != "Productor")
             {
                 return BadRequest("El rol debe ser 'Cliente' o 'Productor'");
             }
 
-            // Actualizar solo los campos permitidos
             cliente.Name = clienteDTO.Name ?? cliente.Name;
             cliente.Propietario = clienteDTO.Propietario ?? cliente.Propietario;
             cliente.Domicilio = clienteDTO.Domicilio ?? cliente.Domicilio;
@@ -207,6 +202,14 @@ namespace GanadoProBackEnd.Controllers
             try
             {
                 await _context.SaveChangesAsync();
+                
+                await _actividadService.RegistrarActividadAsync(
+                    tipo: "Actualización",
+                    descripcion: $"Cliente actualizado: {clienteDTO.Name ?? cliente.Name}",
+                    estado: "Completado",
+                    entidadId: id,
+                    tipoEntidad: "Cliente"
+                );
             }
             catch (DbUpdateConcurrencyException)
             {
@@ -222,14 +225,13 @@ namespace GanadoProBackEnd.Controllers
 
             return NoContent();
         }
+        
         [HttpDelete("{id}")]
-      
         public async Task<IActionResult> DeleteCliente(int id)
         {
             var cliente = await _context.Clientes.FindAsync(id);
             if (cliente == null) return NotFound();
 
-            // Verificar relaciones sin cargar entidades completas
             bool hasRelations = await _context.Animales.AnyAsync(a => a.Id_Cliente == id)
                             || await _context.Lotes.AnyAsync(l => l.Id_Cliente == id)
                             || await _context.Ventas.AnyAsync(v => v.Id_Cliente == id);
@@ -250,6 +252,15 @@ namespace GanadoProBackEnd.Controllers
 
             _context.Clientes.Remove(cliente);
             await _context.SaveChangesAsync();
+            
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Eliminación",
+                descripcion: $"Cliente eliminado: ID {id}",
+                estado: "Completado",
+                entidadId: id,
+                tipoEntidad: "Cliente"
+            );
+
             return NoContent();
         }
 
@@ -257,44 +268,44 @@ namespace GanadoProBackEnd.Controllers
         {
             return _context.Clientes.Any(e => e.Id_Cliente == id);
         }
-    }
 
-    public class ClienteCreateDTO
-    {
-        public int Id_User { get; set; }
-        public string Rol { get; set; }
-        public string Name { get; set; }
-        public string Propietario { get; set; }
-        public string Domicilio { get; set; }
-        public string Localidad { get; set; }
-        public string Municipio { get; set; }
-        public string Entidad { get; set; }
-        public string Upp { get; set; }
-    }
+        public class ClienteCreateDTO
+        {
+            public int Id_User { get; set; }
+            public string Rol { get; set; }
+            public string Name { get; set; }
+            public string Propietario { get; set; }
+            public string Domicilio { get; set; }
+            public string Localidad { get; set; }
+            public string Municipio { get; set; }
+            public string Entidad { get; set; }
+            public string Upp { get; set; }
+        }
 
-    public class ClienteUpdateDTO
-    {
-        public string Name { get; set; }
-        public string Propietario { get; set; }
-        public string Domicilio { get; set; }
-        public string Localidad { get; set; }
-        public string Municipio { get; set; }
-        public string Entidad { get; set; }
-        public string Upp { get; set; }
-        public string Rol { get; set; } // "Cliente" o "Productor"
-    }
+        public class ClienteUpdateDTO
+        {
+            public string Name { get; set; }
+            public string Propietario { get; set; }
+            public string Domicilio { get; set; }
+            public string Localidad { get; set; }
+            public string Municipio { get; set; }
+            public string Entidad { get; set; }
+            public string Upp { get; set; }
+            public string Rol { get; set; }
+        }
 
-    public class ClienteResponseDTO
-    {
-        public int Id_Cliente { get; set; }
-        public int Id_User { get; set; }
-        public string Name { get; set; }
-        public string Propietario { get; set; }
-        public string Domicilio { get; set; }
-        public string Localidad { get; set; }
-        public string Municipio { get; set; }
-        public string Entidad { get; set; }
-        public string Upp { get; set; }
-        public string Rol { get; set; }
+        public class ClienteResponseDTO
+        {
+            public int Id_Cliente { get; set; }
+            public int Id_User { get; set; }
+            public string Name { get; set; }
+            public string Propietario { get; set; }
+            public string Domicilio { get; set; }
+            public string Localidad { get; set; }
+            public string Municipio { get; set; }
+            public string Entidad { get; set; }
+            public string Upp { get; set; }
+            public string Rol { get; set; }
+        }
     }
 }

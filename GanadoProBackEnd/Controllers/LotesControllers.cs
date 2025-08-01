@@ -8,6 +8,7 @@ using GanadoProBackEnd.Models;
 using Microsoft.AspNetCore.Authorization;
 using GanadoProBackEnd.Data;
 using System.ComponentModel.DataAnnotations;
+using GanadoProBackEnd.Services;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -17,10 +18,12 @@ namespace GanadoProBackEnd.Controllers
     public class LotesController : ControllerBase
     {
         private readonly MyDbContext _context;
+        private readonly IActividadService _actividadService;
 
-        public LotesController(MyDbContext context)
+        public LotesController(MyDbContext context, IActividadService actividadService)
         {
             _context = context;
+            _actividadService = actividadService;
         }
 
         [HttpGet]
@@ -113,6 +116,14 @@ namespace GanadoProBackEnd.Controllers
 
             _context.Lotes.Add(lote);
             await _context.SaveChangesAsync();
+            
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Registro",
+                descripcion: $"Nuevo lote creado: REMO {loteDto.Remo}",
+                estado: estado,
+                entidadId: lote.Id_Lote,
+                tipoEntidad: "Lote"
+            );
 
             return CreatedAtAction(nameof(GetLote), new { id = lote.Id_Lote }, MapLoteToDto(lote));
         }
@@ -146,7 +157,6 @@ namespace GanadoProBackEnd.Controllers
                     "Disponible";
             }
 
-            // Si cambió el remo, actualizar los animales
             if (remoCambiado && existingLote.Animales != null)
             {
                 foreach (var animal in existingLote.Animales)
@@ -157,6 +167,14 @@ namespace GanadoProBackEnd.Controllers
 
             _context.Entry(existingLote).State = EntityState.Modified;
             await _context.SaveChangesAsync();
+            
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Actualización",
+                descripcion: $"Lote actualizado: REMO {updateDto.Remo}",
+                estado: existingLote.Estado,
+                entidadId: id,
+                tipoEntidad: "Lote"
+            );
 
             return NoContent();
         }
@@ -183,18 +201,22 @@ namespace GanadoProBackEnd.Controllers
                 });
             }
 
-            // Desvincular animales y limpiar folio de salida
-            if (lote.Animales != null)
+            foreach (var animal in lote.Animales)
             {
-                foreach (var animal in lote.Animales)
-                {
-                    animal.Id_Lote = null;
-                    animal.FoliGuiaRemoSalida = null;
-                }
+                animal.Id_Lote = null;
+                animal.FoliGuiaRemoSalida = null;
             }
 
             _context.Lotes.Remove(lote);
             await _context.SaveChangesAsync();
+            
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Eliminación",
+                descripcion: $"Lote eliminado: REMO {lote.Remo}",
+                estado: "Completado",
+                entidadId: id,
+                tipoEntidad: "Lote"
+            );
 
             return NoContent();
         }
@@ -208,8 +230,7 @@ namespace GanadoProBackEnd.Controllers
                     .ThenInclude(l => l.Animales)
                 .FirstOrDefaultAsync(v => v.Id_Venta == id);
 
-            if (venta == null)
-                return NotFound();
+            if (venta == null) return NotFound();
 
             if (venta.Estado != "Completada")
                 return BadRequest("Solo se pueden eliminar ventas en estado 'Completada'");
@@ -231,6 +252,14 @@ namespace GanadoProBackEnd.Controllers
 
             _context.Ventas.Remove(venta);
             await _context.SaveChangesAsync();
+            
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Venta",
+                descripcion: $"Venta completada eliminada: ID {id}",
+                estado: "Completado",
+                entidadId: id,
+                tipoEntidad: "Venta"
+            );
 
             return NoContent();
         }

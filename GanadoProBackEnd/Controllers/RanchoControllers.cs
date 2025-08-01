@@ -9,6 +9,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
+using GanadoProBackEnd.Services;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -18,13 +19,14 @@ namespace GanadoProBackEnd.Controllers
     public class RanchosController : ControllerBase
     {
         private readonly MyDbContext _context;
+        private readonly IActividadService _actividadService;
 
-        public RanchosController(MyDbContext context)
+        public RanchosController(MyDbContext context, IActividadService actividadService)
         {
             _context = context;
+            _actividadService = actividadService;
         }
 
-        // GET: Todos los ranchos
         [HttpGet]
         public async Task<ActionResult<IEnumerable<RanchoResponseDto>>> GetRanchos()
         {
@@ -43,7 +45,6 @@ namespace GanadoProBackEnd.Controllers
                 .ToListAsync();
         }
 
-        // GET: Rancho por ID
         [HttpGet("{id}")]
         public async Task<ActionResult<RanchoResponseDto>> GetRancho(int id)
         {
@@ -65,11 +66,9 @@ namespace GanadoProBackEnd.Controllers
             return rancho != null ? rancho : NotFound();
         }
 
-        // GET: Ranchos del usuario actual
         [HttpGet("mis-ranchos")]
         public async Task<ActionResult<IEnumerable<RanchoResponseDto>>> GetRanchosByUser()
         {
-            // Obtener ID de usuario autenticado
             var userId = int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier));
 
             var ranchos = await _context.Ranchos
@@ -90,11 +89,9 @@ namespace GanadoProBackEnd.Controllers
             return ranchos;
         }
 
-        // POST: Crear nuevo rancho
         [HttpPost]
         public async Task<ActionResult<RanchoResponseDto>> CreateRancho([FromBody] CreateRanchoDto ranchoDto)
         {
-            // Verificar que el usuario exista
             var userExists = await _context.Users.AnyAsync(u => u.Id_User == ranchoDto.Id_User);
             if (!userExists)
             {
@@ -110,8 +107,15 @@ namespace GanadoProBackEnd.Controllers
 
             _context.Ranchos.Add(rancho);
             await _context.SaveChangesAsync();
+            
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Registro",
+                descripcion: $"Nuevo rancho creado: {ranchoDto.NombreRancho}",
+                estado: "Completado",
+                entidadId: rancho.Id_Rancho,
+                tipoEntidad: "Rancho"
+            );
 
-            // Recargar la entidad con las relaciones
             var createdRancho = await _context.Ranchos
                 .Include(r => r.User)
                 .FirstOrDefaultAsync(r => r.Id_Rancho == rancho.Id_Rancho);
@@ -134,7 +138,6 @@ namespace GanadoProBackEnd.Controllers
             };
         }
 
-        // PUT: Actualizar rancho
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateRancho(int id, [FromBody] UpdateRanchoDto updateDto)
         {
@@ -146,7 +149,6 @@ namespace GanadoProBackEnd.Controllers
                 return NotFound();
             }
 
-            // Actualizar propiedades
             if (!string.IsNullOrWhiteSpace(updateDto.NombreRancho))
             {
                 rancho.NombreRancho = updateDto.NombreRancho;
@@ -157,10 +159,8 @@ namespace GanadoProBackEnd.Controllers
                 rancho.Ubicacion = updateDto.Ubicacion;
             }
 
-            // Si se proporciona un nuevo Id_User, transferir la propiedad
             if (updateDto.Id_User.HasValue)
             {
-                // Verificar que el nuevo usuario exista
                 var newUserExists = await _context.Users.AnyAsync(u => u.Id_User == updateDto.Id_User.Value);
                 if (!newUserExists)
                 {
@@ -170,10 +170,18 @@ namespace GanadoProBackEnd.Controllers
             }
 
             await _context.SaveChangesAsync();
+            
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Actualización",
+                descripcion: $"Rancho actualizado: {updateDto.NombreRancho ?? rancho.NombreRancho}",
+                estado: "Completado",
+                entidadId: id,
+                tipoEntidad: "Rancho"
+            );
+
             return NoContent();
         }
 
-        // DELETE: Eliminar rancho
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteRancho(int id)
         {
@@ -193,28 +201,36 @@ namespace GanadoProBackEnd.Controllers
 
             _context.Ranchos.Remove(rancho);
             await _context.SaveChangesAsync();
+            
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Eliminación",
+                descripcion: $"Rancho eliminado: ID {id}",
+                estado: "Completado",
+                entidadId: id,
+                tipoEntidad: "Rancho"
+            );
 
             return NoContent();
         }
+        
         [HttpGet("resumen-ganado")]
-public async Task<ActionResult<IEnumerable<ResumenGanadoDto>>> GetResumenGanadoPorRancho()
-{
-    var resumen = await _context.Ranchos
-        .Select(r => new ResumenGanadoDto
+        public async Task<ActionResult<IEnumerable<ResumenGanadoDto>>> GetResumenGanadoPorRancho()
         {
-            Id_Rancho = r.Id_Rancho,
-            NombreRancho = r.NombreRancho,
-            TotalAnimales = r.Animales.Count(),
-            TotalHembras = r.Animales.Count(a => a.Sexo == "Hembra"),
-            TotalMachos = r.Animales.Count(a => a.Sexo == "Macho")
-        })
-        .ToListAsync();
+            var resumen = await _context.Ranchos
+                .Select(r => new ResumenGanadoDto
+                {
+                    Id_Rancho = r.Id_Rancho,
+                    NombreRancho = r.NombreRancho,
+                    TotalAnimales = r.Animales.Count(),
+                    TotalHembras = r.Animales.Count(a => a.Sexo == "Hembra"),
+                    TotalMachos = r.Animales.Count(a => a.Sexo == "Macho")
+                })
+                .ToListAsync();
 
-    return resumen;
-}
+            return resumen;
+        }
     }
 
-    // DTOs
     public class CreateRanchoDto
     {
         [Required(ErrorMessage = "El nombre del rancho es obligatorio")]
@@ -248,12 +264,13 @@ public async Task<ActionResult<IEnumerable<ResumenGanadoDto>>> GetResumenGanadoP
         public string Email { get; set; }
         public int TotalLotes { get; set; }
     }
+    
     public class ResumenGanadoDto
-{
-    public int Id_Rancho { get; set; }
-    public string NombreRancho { get; set; }
-    public int TotalAnimales { get; set; }
-    public int TotalHembras { get; set; }
-    public int TotalMachos { get; set; }
-}
+    {
+        public int Id_Rancho { get; set; }
+        public string NombreRancho { get; set; }
+        public int TotalAnimales { get; set; }
+        public int TotalHembras { get; set; }
+        public int TotalMachos { get; set; }
+    }
 }

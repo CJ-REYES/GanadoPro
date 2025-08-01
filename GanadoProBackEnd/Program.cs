@@ -73,6 +73,10 @@ builder.Services.AddCors(options =>
     });
 });
 
+// Registrar servicios de actividades
+builder.Services.AddScoped<IActividadService, ActividadService>();
+builder.Services.AddHttpContextAccessor();
+
 // Configurar autenticación JWT
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>

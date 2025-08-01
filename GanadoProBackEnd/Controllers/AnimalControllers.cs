@@ -6,6 +6,7 @@ using System.ComponentModel.DataAnnotations;
 using System.Globalization;
 using System.Linq;
 using Microsoft.AspNetCore.Authorization;
+using GanadoProBackEnd.Services;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -15,10 +16,14 @@ namespace GanadoProBackEnd.Controllers
     public class AnimalesController : ControllerBase
     {
         private readonly MyDbContext _context;
+        private readonly IActividadService _actividadService;
 
-        public AnimalesController(MyDbContext context) => _context = context;
+        public AnimalesController(MyDbContext context, IActividadService actividadService)
+        {
+            _context = context;
+            _actividadService = actividadService;
+        }
 
-        // GET: Todos los animales
         [HttpGet]
         public async Task<ActionResult<IEnumerable<AnimalResponseDto>>> GetAnimales()
         {
@@ -63,7 +68,6 @@ namespace GanadoProBackEnd.Controllers
             }).ToList();
         }
 
-        // GET: Animal por ID
         [HttpGet("{id}")]
         public async Task<ActionResult<AnimalResponseDto>> GetAnimal(int id)
         {
@@ -78,16 +82,13 @@ namespace GanadoProBackEnd.Controllers
             return MapAnimalToDto(animal);
         }
 
-        // POST: Crear nuevo animal
         [HttpPost]
         public async Task<ActionResult<AnimalResponseDto>> CreateAnimal([FromBody] CreateAnimalDto animalDto)
         {
-            // Validar rancho
             var rancho = await _context.Ranchos.FindAsync(animalDto.Id_Rancho);
             if (rancho == null)
                 return BadRequest(new { Message = "Rancho no existe", Field = "Id_Rancho" });
 
-            // Validar UPP Origen si se proporciona
             int? idProductor = null;
             if (!string.IsNullOrEmpty(animalDto.UppOrigen))
             {
@@ -104,7 +105,6 @@ namespace GanadoProBackEnd.Controllers
                 idProductor = productor.Id_Cliente;
             }
 
-            // Validar UPP Destino si se proporciona
             int? idCliente = null;
             if (!string.IsNullOrEmpty(animalDto.UppDestino))
             {
@@ -121,7 +121,6 @@ namespace GanadoProBackEnd.Controllers
                 idCliente = cliente.Id_Cliente;
             }
             
-            // Verificar arete único
             bool areteExiste = await _context.Animales
                 .AnyAsync(a => a.Arete == animalDto.Arete);
             
@@ -134,7 +133,6 @@ namespace GanadoProBackEnd.Controllers
                 });
             }
 
-            // Validar lote si se proporciona
             if (animalDto.Id_Lote.HasValue && animalDto.Id_Lote.Value > 0)
             {
                 var lote = await _context.Lotes.FindAsync(animalDto.Id_Lote.Value);
@@ -148,7 +146,7 @@ namespace GanadoProBackEnd.Controllers
 
             var animal = new Animal
             {
-                Id_User = 1, // Obtener del usuario autenticado
+                Id_User = 1,
                 Id_Rancho = animalDto.Id_Rancho,
                 Arete = animalDto.Arete,
                 Peso = animalDto.Peso ?? 0,
@@ -177,10 +175,17 @@ namespace GanadoProBackEnd.Controllers
             await _context.Animales.AddAsync(animal);
             await _context.SaveChangesAsync();
 
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Registro",
+                descripcion: $"Nuevo animal registrado: {animalDto.Arete}",
+                estado: "Completado",
+                entidadId: animal.Id_Animal,
+                tipoEntidad: "Animal"
+            );
+
             return CreatedAtAction(nameof(GetAnimal), new { id = animal.Id_Animal }, MapAnimalToDto(animal));
         }
 
-        // PUT: Asignar lote a múltiples animales
         [HttpPut("asignar-lote")]
         [Authorize]
         public async Task<IActionResult> AsignarLoteAMultiplesAnimales([FromBody] AsignarLoteDto request)
@@ -195,15 +200,22 @@ namespace GanadoProBackEnd.Controllers
             foreach (var animal in animales)
             {
                 animal.Id_Lote = request.Id_Lote;
-                // Asignar el remo del lote al animal
                 animal.FoliGuiaRemoSalida = lote.Remo.ToString();
             }
 
             await _context.SaveChangesAsync();
+            
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Movimiento",
+                descripcion: $"{animales.Count} animales asignados al lote REMO {lote.Remo}",
+                estado: "Completado",
+                entidadId: request.Id_Lote,
+                tipoEntidad: "Lote"
+            );
+
             return NoContent();
         }
 
-        // PUT: Actualizar animal existente
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateAnimal(int id, [FromBody] UpdateAnimalDto updateDto)
         {
@@ -213,7 +225,6 @@ namespace GanadoProBackEnd.Controllers
 
             if (animal == null) return NotFound();
 
-            // Validar UPP Origen si se actualiza
             if (!string.IsNullOrEmpty(updateDto.UppOrigen))
             {
                 var productor = await _context.Clientes
@@ -229,7 +240,6 @@ namespace GanadoProBackEnd.Controllers
                 animal.UppOrigen = updateDto.UppOrigen;
             }
 
-            // Validar UPP Destino si se actualiza
             if (!string.IsNullOrEmpty(updateDto.UppDestino))
             {
                 var cliente = await _context.Clientes
@@ -246,7 +256,6 @@ namespace GanadoProBackEnd.Controllers
                 animal.Id_Cliente = cliente.Id_Cliente;
             }
 
-            // Validar rancho
             if (updateDto.Id_Rancho != animal.Id_Rancho)
             {
                 var rancho = await _context.Ranchos.FindAsync(updateDto.Id_Rancho);
@@ -256,7 +265,6 @@ namespace GanadoProBackEnd.Controllers
                 animal.Id_Rancho = updateDto.Id_Rancho;
             }
 
-            // Validar lote si se actualiza
             if (updateDto.Id_Lote.HasValue && updateDto.Id_Lote != animal.Id_Lote)
             {
                 if (updateDto.Id_Lote.Value > 0)
@@ -266,7 +274,6 @@ namespace GanadoProBackEnd.Controllers
                         return BadRequest(new { Message = "Lote no existe", Field = "Id_Lote" });
 
                     animal.Id_Lote = updateDto.Id_Lote;
-                    // Actualizar el folio de salida con el remo del nuevo lote
                     animal.FoliGuiaRemoSalida = lote.Remo.ToString();
                 }
                 else
@@ -276,7 +283,6 @@ namespace GanadoProBackEnd.Controllers
                 }
             }
 
-            // Actualizar campos
             animal.Arete = updateDto.Arete ?? animal.Arete;
             animal.Peso = updateDto.Peso ?? animal.Peso;
             animal.Sexo = updateDto.Sexo ?? animal.Sexo;
@@ -306,10 +312,18 @@ namespace GanadoProBackEnd.Controllers
             animal.Estado = updateDto.Estado ?? animal.Estado;
 
             await _context.SaveChangesAsync();
+            
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Actualización",
+                descripcion: $"Animal actualizado: {updateDto.Arete ?? animal.Arete}",
+                estado: "Completado",
+                entidadId: id,
+                tipoEntidad: "Animal"
+            );
+
             return NoContent();
         }
 
-        // DELETE: Eliminar animal
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteAnimal(int id)
         {
@@ -318,11 +332,18 @@ namespace GanadoProBackEnd.Controllers
 
             _context.Animales.Remove(animal);
             await _context.SaveChangesAsync();
+            
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Eliminación",
+                descripcion: $"Animal eliminado: ID {id}",
+                estado: "Completado",
+                entidadId: id,
+                tipoEntidad: "Animal"
+            );
 
             return NoContent();
         }
         
-        // PATCH: Remover lote de un animal
         [HttpPatch("{id}/remover-lote")]
         public async Task<IActionResult> RemoverLoteDeAnimal(int id)
         {
@@ -332,11 +353,18 @@ namespace GanadoProBackEnd.Controllers
             animal.Id_Lote = null;
             animal.FoliGuiaRemoSalida = null;
             await _context.SaveChangesAsync();
+            
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Movimiento",
+                descripcion: $"Animal removido de lote: {animal.Arete}",
+                estado: "Completado",
+                entidadId: id,
+                tipoEntidad: "Animal"
+            );
 
             return NoContent();
         }
 
-        // Nuevos endpoints
         [HttpGet("count/enstock")]
         public async Task<ActionResult<int>> GetCountAnimalesEnStock()
         {
@@ -349,7 +377,6 @@ namespace GanadoProBackEnd.Controllers
             return await _context.Animales.CountAsync(a => a.Estado == "Vendido");
         }
 
-        // Métodos auxiliares
         private AnimalResponseDto MapAnimalToDto(Animal animal)
         {
             return new AnimalResponseDto
@@ -383,7 +410,6 @@ namespace GanadoProBackEnd.Controllers
             };
         }
 
-        // DTOs
         public class AnimalEnStockDto
         {
             public int Id_Animal { get; set; }
