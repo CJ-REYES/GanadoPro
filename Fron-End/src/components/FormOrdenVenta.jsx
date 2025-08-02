@@ -44,8 +44,8 @@ const FormOrdenVenta = ({ onClose, onSave, orden }) => {
         // Unificar el nombre de la propiedad 'remo' a 'REMO' (if it comes differently from API)
         // Or ensure consistency in the backend. For now, we'll handle it defensively.
         setLotesDisponibles(lotesData.map(lote => ({
-            ...lote,
-            remo: lote.REMO || lote.remo // Ensure 'remo' is always accessible
+          ...lote,
+          remo: lote.REMO || lote.remo // Ensure 'remo' is always accessible
         })));
         
         setRanchos(ranchosData);
@@ -92,7 +92,7 @@ const FormOrdenVenta = ({ onClose, onSave, orden }) => {
         setFolioGuiaRemo(''); // Clear if no valid REMO is found
       }
     } else {
-        setFolioGuiaRemo(''); // Clear if no lotes are selected
+      setFolioGuiaRemo(''); // Clear if no lotes are selected
     }
   }, [lotesSeleccionados, lotesDisponibles]);
 
@@ -180,7 +180,7 @@ const FormOrdenVenta = ({ onClose, onSave, orden }) => {
             idCliente: cliente.Id_Cliente,
             cliente: cliente.Name,
             upp, // Aquí se usa la Upp cargada
-            idRancho: ranchoSeleccionado,
+            idRancho: ranchoSelecho,
             lotes: lotesDisponibles.filter(l => lotesSeleccionados.includes(l.id_Lote))
           };
         }
@@ -206,9 +206,9 @@ const FormOrdenVenta = ({ onClose, onSave, orden }) => {
   );
 
   return (
-    <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-lg shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700">
+    <form onSubmit={handleSubmit} className="bg-white dark:bg-gray-900 text-gray-900 dark:text-white rounded-lg shadow-xl overflow-hidden border border-gray-200 dark:border-gray-700 max-h-screen">
       {/* Encabezado simplificado */}
-      <div className="bg-gray-100 dark:bg-gray-800 p-6 border-b border-gray-200 dark:border-gray-700">
+      <div className="bg-gray-100 dark:bg-gray-800 p-6 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
         <h2 className="text-2xl font-bold">
           {orden ? 'Editar Orden de Venta' : 'Nueva Orden de Venta'}
         </h2>
@@ -217,7 +217,8 @@ const FormOrdenVenta = ({ onClose, onSave, orden }) => {
         </p>
       </div>
 
-      <div className="p-6">
+      {/* Contenedor con scroll vertical */}
+      <div className="p-6 overflow-y-auto max-h-[calc(100vh-200px)]"> 
         {error && (
           <div className="bg-red-50 dark:bg-red-900/30 border-l-4 border-red-500 text-red-700 dark:text-red-300 p-4 mb-6 rounded">
             <p className="font-medium">Error</p>
@@ -448,34 +449,34 @@ const FormOrdenVenta = ({ onClose, onSave, orden }) => {
             </span>
           </div>
         </div>
+      </div>
 
-        {/* Botones */}
-        <div className="flex justify-end space-x-3 border-t border-gray-200 dark:border-gray-800 pt-6">
-          <button 
-            type="button" 
-            onClick={onClose}
-            className="px-5 py-2.5 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors duration-200"
-          >
-            Cancelar
-          </button>
-          <button 
-            type="submit" 
-            disabled={procesando}
-            className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium disabled:opacity-70 disabled:cursor-not-allowed transition-colors duration-200"
-          >
-            {procesando ? (
-              <div className="flex items-center">
-                <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
-                {orden ? 'Actualizando...' : 'Creando...'}
-              </div>
-            ) : (
-              orden ? 'Actualizar' : 'Crear'
-            )}
-          </button>
-        </div>
+      {/* Botones */}
+      <div className="flex justify-end space-x-3 p-6 border-t border-gray-200 dark:border-gray-800 flex-shrink-0">
+        <button 
+          type="button" 
+          onClick={onClose}
+          className="px-5 py-2.5 text-gray-700 dark:text-gray-300 bg-gray-200 dark:bg-gray-800 hover:bg-gray-300 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors duration-200"
+        >
+          Cancelar
+        </button>
+        <button 
+          type="submit" 
+          disabled={procesando}
+          className="px-5 py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded-lg font-medium disabled:opacity-70 disabled:cursor-not-allowed transition-colors duration-200"
+        >
+          {procesando ? (
+            <div className="flex items-center">
+              <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              {orden ? 'Actualizando...' : 'Creando...'}
+            </div>
+          ) : (
+            orden ? 'Actualizar' : 'Crear'
+          )}
+        </button>
       </div>
     </form>
   );
