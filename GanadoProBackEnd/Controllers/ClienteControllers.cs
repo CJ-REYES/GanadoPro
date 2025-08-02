@@ -47,102 +47,98 @@ namespace GanadoProBackEnd.Controllers
                 .ToListAsync();
         }
 
-        [HttpPost]
-        public async Task<ActionResult<ClienteResponseDTO>> PostCliente([FromBody] ClienteCreateDTO clienteDTO)
+[HttpPost]
+public async Task<ActionResult<ClienteResponseDTO>> PostCliente([FromBody] ClienteCreateDTO clienteDTO)
+{
+    if (clienteDTO == null)
+        return BadRequest("El cuerpo de la solicitud no puede estar vacío");
+
+    var usuario = await _context.Users.FindAsync(clienteDTO.Id_User);
+    if (usuario == null)
+        return BadRequest($"El usuario con ID {clienteDTO.Id_User} no existe");
+
+    var validRoles = new[] { "Cliente", "Productor" };
+    if (string.IsNullOrWhiteSpace(clienteDTO.Rol) || !validRoles.Contains(clienteDTO.Rol))
+        return BadRequest("El Rol debe ser 'Cliente' o 'Productor'");
+
+    var cliente = new Clientes
+    {
+        Id_User = clienteDTO.Id_User,
+        Name = clienteDTO.Name?.Trim(),
+        Propietario = clienteDTO.Propietario?.Trim() ?? string.Empty,
+        Domicilio = clienteDTO.Domicilio?.Trim() ?? string.Empty,
+        Localidad = clienteDTO.Localidad?.Trim() ?? string.Empty,
+        Municipio = clienteDTO.Municipio?.Trim() ?? string.Empty,
+        Entidad = clienteDTO.Entidad?.Trim() ?? string.Empty,
+        Upp = clienteDTO.Upp?.Trim() ?? string.Empty,
+        Rol = clienteDTO.Rol.Trim()
+    };
+
+    var validationContext = new ValidationContext(cliente);
+    var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
+    if (!Validator.TryValidateObject(cliente, validationContext, validationResults, true))
+        return BadRequest(validationResults);
+
+    var strategy = _context.Database.CreateExecutionStrategy();
+    return await strategy.ExecuteAsync(async () =>
+    {
+        await using var transaction = await _context.Database.BeginTransactionAsync();
+
+        try
         {
-            if (clienteDTO == null)
-            {
-                return BadRequest("El cuerpo de la solicitud no puede estar vacío");
-            }
+            _context.Clientes.Add(cliente);
+            await _context.SaveChangesAsync();
 
-            var usuario = await _context.Users.FindAsync(clienteDTO.Id_User);
-            if (usuario == null)
-            {
-                return BadRequest($"El usuario con ID {clienteDTO.Id_User} no existe");
-            }
+            await _actividadService.RegistrarActividadAsync(
+                tipo: "Registro",
+                descripcion: $"Nuevo cliente creado: {clienteDTO.Name}",
+                estado: "Completado",
+                entidadId: cliente.Id_Cliente,
+                tipoEntidad: "Cliente"
+            );
 
-            var validRoles = new[] { "Cliente", "Productor" };
-            if (string.IsNullOrWhiteSpace(clienteDTO.Rol) || !validRoles.Contains(clienteDTO.Rol))
-            {
-                return BadRequest("El Rol debe ser 'Cliente' o 'Productor'");
-            }
+            await transaction.CommitAsync();
 
-            var cliente = new Clientes
+            var clienteResponse = new ClienteResponseDTO
             {
-                Id_User = clienteDTO.Id_User,
-                Name = clienteDTO.Name?.Trim(),
-                Propietario = clienteDTO.Propietario?.Trim() ?? string.Empty,
-                Domicilio = clienteDTO.Domicilio?.Trim() ?? string.Empty,
-                Localidad = clienteDTO.Localidad?.Trim() ?? string.Empty,
-                Municipio = clienteDTO.Municipio?.Trim() ?? string.Empty,
-                Entidad = clienteDTO.Entidad?.Trim() ?? string.Empty,
-                Upp = clienteDTO.Upp?.Trim() ?? string.Empty,
-                Rol = clienteDTO.Rol.Trim()
+                Id_Cliente = cliente.Id_Cliente,
+                Id_User = cliente.Id_User,
+                Name = cliente.Name,
+                Propietario = cliente.Propietario,
+                Domicilio = cliente.Domicilio,
+                Localidad = cliente.Localidad,
+                Municipio = cliente.Municipio,
+                Entidad = cliente.Entidad,
+                Upp = cliente.Upp,
+                Rol = cliente.Rol
             };
 
-            var validationContext = new ValidationContext(cliente);
-            var validationResults = new List<System.ComponentModel.DataAnnotations.ValidationResult>();
-            if (!Validator.TryValidateObject(cliente, validationContext, validationResults, true))
-            {
-                return BadRequest(validationResults);
-            }
-
-            await using var transaction = await _context.Database.BeginTransactionAsync();
-            try
-            {
-                _context.Clientes.Add(cliente);
-                await _context.SaveChangesAsync();
-                await transaction.CommitAsync();
-
-                await _actividadService.RegistrarActividadAsync(
-                    tipo: "Registro",
-                    descripcion: $"Nuevo cliente creado: {clienteDTO.Name}",
-                    estado: "Completado",
-                    entidadId: cliente.Id_Cliente,
-                    tipoEntidad: "Cliente"
-                );
-
-                var clienteResponse = new ClienteResponseDTO
-                {
-                    Id_Cliente = cliente.Id_Cliente,
-                    Id_User = cliente.Id_User,
-                    Name = cliente.Name,
-                    Propietario = cliente.Propietario,
-                    Domicilio = cliente.Domicilio,
-                    Localidad = cliente.Localidad,
-                    Municipio = cliente.Municipio,
-                    Entidad = cliente.Entidad,
-                    Upp = cliente.Upp,
-                    Rol = cliente.Rol
-                };
-
-                return CreatedAtAction(nameof(GetCliente), new { id = cliente.Id_Cliente }, clienteResponse);
-            }
-            catch (DbUpdateException dbEx)
-            {
-                await transaction.RollbackAsync();
-
-                if (dbEx.InnerException is MySqlException mySqlEx)
-                {
-                    switch (mySqlEx.Number)
-                    {
-                        case 1452:
-                            return BadRequest("Error de relación: " + mySqlEx.Message);
-                        case 1062:
-                            return Conflict("Registro duplicado: " + mySqlEx.Message);
-                        default:
-                            return StatusCode(500, $"Error de base de datos (Código: {mySqlEx.Number}): {mySqlEx.Message}");
-                    }
-                }
-
-                return StatusCode(500, $"Error al guardar: {dbEx.InnerException?.Message ?? dbEx.Message}");
-            }
-            catch (Exception ex)
-            {
-                await transaction.RollbackAsync();
-                return StatusCode(500, $"Error inesperado: {ex.Message}");
-            }
+            return CreatedAtAction(nameof(GetCliente), new { id = cliente.Id_Cliente }, clienteResponse);
         }
+        catch (DbUpdateException dbEx)
+        {
+            await transaction.RollbackAsync();
+
+            if (dbEx.InnerException is MySqlException mySqlEx)
+            {
+                return mySqlEx.Number switch
+                {
+                    1452 => BadRequest("Error de relación: " + mySqlEx.Message),
+                    1062 => Conflict("Registro duplicado: " + mySqlEx.Message),
+                    _ => StatusCode(500, $"Error de base de datos (Código: {mySqlEx.Number}): {mySqlEx.Message}")
+                };
+            }
+
+            return StatusCode(500, $"Error al guardar: {dbEx.InnerException?.Message ?? dbEx.Message}");
+        }
+        catch (Exception ex)
+        {
+            await transaction.RollbackAsync();
+            return StatusCode(500, $"Error inesperado: {ex.Message}");
+        }
+    });
+}
+
 
         [HttpGet("{id}")]
         public async Task<ActionResult<ClienteResponseDTO>> GetCliente(int id)
