@@ -52,7 +52,7 @@ const useLocalStorage = (key, initialValue) => {
   return [storedValue, setValue];
 };
 
-const RanchoCard = ({ rancho, onEdit, onDelete, onView }) => {
+const RanchoCard = ({ rancho, onEdit, onDelete, onView, totalAnimales }) => {
   return (
     <motion.div
       initial={{ opacity: 0, scale: 0.9 }}
@@ -83,7 +83,9 @@ const RanchoCard = ({ rancho, onEdit, onDelete, onView }) => {
           </div>
           <div className="flex items-center justify-between text-sm">
             <span className="text-muted-foreground">Animales:</span>
-            <span className="font-semibold text-foreground">{rancho.totalAnimales || 0}</span>
+            <span className="font-semibold text-foreground">
+              {totalAnimales !== undefined ? totalAnimales : (rancho.totalAnimales || 0)}
+            </span>
           </div>
         </CardContent>
         <CardFooter className="gap-1">
@@ -116,10 +118,28 @@ const RanchosPage = () => {
   const [destinationRanchoId, setDestinationRanchoId] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [showDestinationSelector, setShowDestinationSelector] = useState(false);
+  const [animalesPorRancho, setAnimalesPorRancho] = useState({});
   
   // Usa el hook useLocalStorage para el usuario
   const [user] = useLocalStorage('user', null);
   
+  // Función para cargar animales por rancho
+  const cargarAnimales = async (ranchoId) => {
+    try {
+      const animales = await ranchoService.getAnimalesPorRancho(ranchoId);
+      setAnimalesPorRancho(prev => ({
+        ...prev,
+        [ranchoId]: animales.length
+      }));
+    } catch (error) {
+      console.error("Error al cargar animales:", error);
+      setAnimalesPorRancho(prev => ({
+        ...prev,
+        [ranchoId]: 0
+      }));
+    }
+  };
+
   // Obtener ranchos desde la API
   const fetchRanchos = async () => {
     setIsLoading(true);
@@ -127,6 +147,11 @@ const RanchosPage = () => {
     try {
       const data = await ranchoService.getRanchos();
       setRanchos(data);
+      
+      // Cargar animales para cada rancho
+      data.forEach(rancho => {
+        cargarAnimales(rancho.id_Rancho);
+      });
     } catch (error) {
       setError(error.message);
       toast({ 
@@ -158,9 +183,11 @@ const RanchosPage = () => {
         Id_User: user.id
       });
       
-      // CORREGIDO: Typo en createdRancho
       setRanchos([...ranchos, createdRancho]);
       localStorage.setItem('currentRanchoId', createdRancho.id_Rancho);
+      
+      // Cargar animales para el nuevo rancho
+      cargarAnimales(createdRancho.id_Rancho);
       
       toast({ 
         title: "Éxito", 
@@ -228,7 +255,7 @@ const RanchosPage = () => {
     setDestinationRanchoId('');
     
     // Mostrar selector si el rancho tiene lotes o animales
-    if (rancho.totalLotes > 0 || rancho.totalAnimales > 0) {
+    if (rancho.totalLotes > 0 || (animalesPorRancho[rancho.id_Rancho] || 0) > 0) {
       setShowDestinationSelector(true);
     } else {
       setShowDestinationSelector(false);
@@ -236,62 +263,75 @@ const RanchosPage = () => {
   };
 
   // Confirmar eliminación con transferencia
-const confirmDelete = async () => {
-  if (!ranchoToDelete) return;
-  
-  try {
-    const destId = showDestinationSelector ? Number(destinationRanchoId) : null;
+  const confirmDelete = async () => {
+    if (!ranchoToDelete) return;
     
-    await ranchoService.deleteRancho(ranchoToDelete.id_Rancho, destId);
-    
-    // Actualizar estado localmente para evitar recarga completa
-    const updatedRanchos = ranchos.filter(r => r.id_Rancho !== ranchoToDelete.id_Rancho);
-    
-    // Si hubo transferencia, actualizar el rancho destino
-    if (destId) {
-      const ranchoDestino = updatedRanchos.find(r => r.id_Rancho === destId);
-      if (ranchoDestino) {
-        // Actualizar los totales sumando los del rancho eliminado
-        const nuevoTotalLotes = (ranchoDestino.totalLotes || 0) + (ranchoToDelete.totalLotes || 0);
-        const nuevoTotalAnimales = (ranchoDestino.totalAnimales || 0) + (ranchoToDelete.totalAnimales || 0);
-        
-        // Actualizar el rancho destino en el estado
-        const updatedDestino = {
-          ...ranchoDestino,
-          totalLotes: nuevoTotalLotes,
-          totalAnimales: nuevoTotalAnimales
-        };
-        
-        setRanchos(updatedRanchos.map(r => 
-          r.id_Rancho === destId ? updatedDestino : r
-        ));
+    try {
+      const destId = showDestinationSelector ? Number(destinationRanchoId) : null;
+      
+      await ranchoService.deleteRancho(ranchoToDelete.id_Rancho, destId);
+      
+      // Actualizar estado localmente para evitar recarga completa
+      const updatedRanchos = ranchos.filter(r => r.id_Rancho !== ranchoToDelete.id_Rancho);
+      
+      // Si hubo transferencia, actualizar el rancho destino
+      if (destId) {
+        const ranchoDestino = updatedRanchos.find(r => r.id_Rancho === destId);
+        if (ranchoDestino) {
+          // Actualizar los totales sumando los del rancho eliminado
+          const nuevoTotalLotes = (ranchoDestino.totalLotes || 0) + (ranchoToDelete.totalLotes || 0);
+          const nuevoTotalAnimales = (animalesPorRancho[ranchoDestino.id_Rancho] || 0) + 
+                                    (animalesPorRancho[ranchoToDelete.id_Rancho] || 0);
+          
+          // Actualizar el rancho destino en el estado
+          const updatedDestino = {
+            ...ranchoDestino,
+            totalLotes: nuevoTotalLotes
+          };
+          
+          // Actualizar animales en estado
+          setAnimalesPorRancho(prev => ({
+            ...prev,
+            [destId]: nuevoTotalAnimales
+          }));
+          
+          setRanchos(updatedRanchos.map(r => 
+            r.id_Rancho === destId ? updatedDestino : r
+          ));
+        } else {
+          // Si no encontramos el destino, recargar todo
+          await fetchRanchos();
+        }
       } else {
-        // Si no encontramos el destino, recargar todo
-        await fetchRanchos();
+        // Sin transferencia, solo eliminar
+        setRanchos(updatedRanchos);
       }
-    } else {
-      // Sin transferencia, solo eliminar
-      setRanchos(updatedRanchos);
+      
+      // Eliminar del estado de animales
+      setAnimalesPorRancho(prev => {
+        const newState = {...prev};
+        delete newState[ranchoToDelete.id_Rancho];
+        return newState;
+      });
+      
+      setDeleteDialogOpen(false);
+      
+      toast({
+        title: "Éxito",
+        description: destId 
+          ? `Rancho eliminado y registros transferidos`
+          : "Rancho eliminado correctamente",
+        duration: 5000
+      });
+    } catch (error) {
+      console.error("Error al eliminar rancho:", error);
+      setDeleteError(error.message);
+      
+      if (error.message.includes("asociados") || error.message.includes("Proporcione")) {
+        setShowDestinationSelector(true);
+      }
     }
-    
-    setDeleteDialogOpen(false);
-    
-    toast({
-      title: "Éxito",
-      description: destId 
-        ? `Rancho eliminado y registros transferidos`
-        : "Rancho eliminado correctamente",
-      duration: 5000
-    });
-  } catch (error) {
-    console.error("Error al eliminar rancho:", error);
-    setDeleteError(error.message);
-    
-    if (error.message.includes("asociados") || error.message.includes("Proporcione")) {
-      setShowDestinationSelector(true);
-    }
-  }
-};
+  };
 
   useEffect(() => {
     fetchRanchos();
@@ -299,7 +339,10 @@ const confirmDelete = async () => {
 
   const totalRanchos = ranchos.length;
   const totalLotes = ranchos.reduce((sum, r) => sum + (r.totalLotes || 0), 0);
-  const totalAnimales = ranchos.reduce((sum, r) => sum + (r.totalAnimales || 0), 0);
+  const totalAnimales = ranchos.reduce((sum, r) => {
+    const animales = animalesPorRancho[r.id_Rancho] || 0;
+    return sum + animales;
+  }, 0);
 
   if (isLoading) {
     return (
@@ -376,7 +419,7 @@ const confirmDelete = async () => {
             <p className="text-2xl font-bold text-green-400">{totalLotes}</p>
             <p className="text-sm text-muted-foreground">Lotes Totales</p>
           </Card>
-          <Card className="text-center p极">
+          <Card className="text-center p-4">
             <p className="text-2xl font-bold text-blue-400">{totalAnimales}</p>
             <p className="text-sm text-muted-foreground">Animales Totales</p>
           </Card>
@@ -399,6 +442,7 @@ const confirmDelete = async () => {
             <RanchoCard 
               key={rancho.id_Rancho} 
               rancho={rancho} 
+              totalAnimales={animalesPorRancho[rancho.id_Rancho]}
               onEdit={(r) => {
                 setEditingRancho(r);
                 setIsFormOpen(true);
@@ -440,7 +484,7 @@ const confirmDelete = async () => {
                 <p>{viewingRancho.totalLotes || 0}</p>
 
                 <strong>Total de Animales:</strong> 
-                <p>{viewingRancho.totalAnimales || 0}</p>
+                <p>{animalesPorRancho[viewingRancho.id_Rancho] || 0}</p>
               </div>
             </div>
             <DialogFooter>
@@ -450,7 +494,7 @@ const confirmDelete = async () => {
         </Dialog>
       )}
 
-      {/* Diálogo de eliminación - PARTE CLAVE */}
+      {/* Diálogo de eliminación */}
       <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
         if (!open) {
           setDeleteError('');
@@ -497,7 +541,7 @@ const confirmDelete = async () => {
                           <div className="flex flex-col">
                             <span>{rancho.nombreRancho}</span>
                             <span className="text-xs text-muted-foreground">
-                              ID: {rancho.id_Rancho} | Lotes: {rancho.totalLotes} | Animales: {rancho.totalAnimales}
+                              ID: {rancho.id_Rancho} | Lotes: {rancho.totalLotes} | Animales: {animalesPorRancho[rancho.id_Rancho] || 0}
                             </span>
                           </div>
                         </SelectItem>

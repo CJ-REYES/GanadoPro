@@ -218,7 +218,8 @@ const OrdenesVentaPage = () => {
                     {orden.cliente}
                     <div className="text-xs text-muted-foreground">{orden.upp}</div>
                   </TableCell>
-                  <TableCell>{orden.totalAnimales}</TableCell>
+                  <TableCell>{orden.totalAnimales}
+                  </TableCell>
                   <TableCell>
                     <span className={cn("px-2 py-1 text-xs rounded-full flex items-center", color)}>
                       {icon} {orden.estado}

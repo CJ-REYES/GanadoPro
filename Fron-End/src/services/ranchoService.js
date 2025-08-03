@@ -58,6 +58,11 @@ export const getRanchos = async () => {
   const data = await fetchWithAuth(API_URL);
   return data.map(transformRancho);
 };
+// Nueva función para obtener animales por rancho
+export const getAnimalesPorRancho = async (ranchoId) => {
+  const data = await fetchWithAuth(`${API_URL}/${ranchoId}/animales`);
+  return data;
+};
 
 export const getRanchoById = async (id) => {
   const data = await fetchWithAuth(`${API_URL}/${id}`);

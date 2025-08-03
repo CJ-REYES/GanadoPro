@@ -259,6 +259,22 @@ public async Task<IActionResult> DeleteRancho(int id, [FromQuery] int? ranchoDes
     }
 }
         
+[HttpGet("{id}/animales")]
+public async Task<ActionResult<IEnumerable<Animal>>> GetAnimalesPorRancho(int id)
+{
+    try
+    {
+        var animales = await _context.Animales
+            .Where(a => a.Lote.Id_Rancho == id)
+            .ToListAsync();
+            
+        return Ok(animales);
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, $"Error interno del servidor: {ex.Message}");
+    }
+}
         [HttpGet("resumen-ganado")]
         public async Task<ActionResult<IEnumerable<ResumenGanadoDto>>> GetResumenGanadoPorRancho()
         {
