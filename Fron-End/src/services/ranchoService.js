@@ -1,8 +1,7 @@
-// src/services/ranchoService.js
 const API_URL = 'http://localhost:5201/api/Ranchos';
 
 const fetchWithAuth = async (url, options = {}) => {
-  const token = localStorage.getItem('token'); // Asegúrate que el token está en localStorage
+  const token = localStorage.getItem('token');
   
   const headers = {
     'Content-Type': 'application/json',
@@ -19,25 +18,28 @@ const fetchWithAuth = async (url, options = {}) => {
   });
 
   if (!response.ok) {
-    // Manejo detallado de errores
     let errorMessage = 'Error en la solicitud';
+    
+    // Intenta obtener el mensaje de error del cuerpo de la respuesta
     try {
       const errorData = await response.json();
-      errorMessage = errorData.message || errorData.title || errorMessage;
+      errorMessage = errorData.error || errorData.message || errorData.detail || errorMessage;
     } catch (e) {
-      errorMessage = `Error ${response.status}: ${response.statusText}`;
+      // Si no se puede parsear como JSON, usa el texto de la respuesta
+      const text = await response.text();
+      errorMessage = text || errorMessage;
     }
+    
     throw new Error(errorMessage);
   }
 
   if (response.status === 204) {
-    return null; // Para respuestas sin contenido
+    return null;
   }
 
   return response.json();
 };
 
-// Función para transformar las propiedades a minúsculas
 const transformRancho = (rancho) => {
   return {
     id_Rancho: rancho.Id_Rancho,
@@ -47,7 +49,8 @@ const transformRancho = (rancho) => {
     propietario: rancho.Propietario,
     telefono: rancho.Telefono,
     email: rancho.Email,
-    totalLotes: rancho.TotalLotes
+    totalLotes: rancho.TotalLotes,
+    totalAnimales: rancho.TotalAnimales || 0
   };
 };
 
@@ -77,14 +80,17 @@ export const updateRancho = async (id, ranchoData) => {
   return data ? transformRancho(data) : null;
 };
 
-export const deleteRancho = async (id) => {
-  await fetchWithAuth(`${API_URL}/${id}`, {
-    method: 'DELETE',
-  });
-  return id;
-};
+export const deleteRancho = async (id, ranchoDestinoId = null) => {
+  let url = `${API_URL}/${id}`;
+  
+  if (ranchoDestinoId !== null) {
+    url += `?ranchoDestinoId=${ranchoDestinoId}`;
+  }
 
-// Nueva función para obtener ranchos del usuario
+  return fetchWithAuth(url, {
+    method: 'DELETE'
+  });
+};
 export const getRanchosByUser = async () => {
   const data = await fetchWithAuth(`${API_URL}/mis-ranchos`);
   return data.map(transformRancho);

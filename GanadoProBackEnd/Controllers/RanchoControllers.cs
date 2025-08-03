@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using Microsoft.AspNetCore.Authorization;
 using System.Security.Claims;
 using GanadoProBackEnd.Services;
+using System.Transactions;
 
 namespace GanadoProBackEnd.Controllers
 {
@@ -182,36 +183,81 @@ namespace GanadoProBackEnd.Controllers
             return NoContent();
         }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteRancho(int id)
+[HttpDelete("{id}")]
+public async Task<IActionResult> DeleteRancho(int id, [FromQuery] int? ranchoDestinoId)
+{
+    try
+    {
+        var rancho = await _context.Ranchos
+            .Include(r => r.Lotes)
+            .Include(r => r.Animales)
+            .FirstOrDefaultAsync(r => r.Id_Rancho == id);
+
+        if (rancho == null)
         {
-            var rancho = await _context.Ranchos
-                .Include(r => r.Lotes)
-                .FirstOrDefaultAsync(r => r.Id_Rancho == id);
-
-            if (rancho == null)
-            {
-                return NotFound();
-            }
-
-            if (rancho.Lotes.Any())
-            {
-                return BadRequest("No se puede eliminar un rancho con lotes asociados");
-            }
-
-            _context.Ranchos.Remove(rancho);
-            await _context.SaveChangesAsync();
-            
-            await _actividadService.RegistrarActividadAsync(
-                tipo: "Eliminación",
-                descripcion: $"Rancho eliminado: ID {id}",
-                estado: "Completado",
-                entidadId: id,
-                tipoEntidad: "Rancho"
-            );
-
-            return NoContent();
+            return NotFound("Rancho no encontrado");
         }
+
+        // Verificar si tiene dependencias
+        bool tieneDependencias = rancho.Lotes.Any() || rancho.Animales.Any();
+        
+        if (tieneDependencias)
+        {
+            // Validar rancho destino
+            if (!ranchoDestinoId.HasValue)
+            {
+                return BadRequest("El rancho tiene registros asociados. Proporcione el ID de un rancho destino para transferirlos.");
+            }
+
+            if (ranchoDestinoId.Value == id)
+            {
+                return BadRequest("No puede transferir los registros al mismo rancho que se va a eliminar.");
+            }
+
+            var ranchoDestino = await _context.Ranchos.FindAsync(ranchoDestinoId.Value);
+            if (ranchoDestino == null)
+            {
+                return BadRequest("El rancho destino especificado no existe.");
+            }
+
+            // Transferir lotes
+            foreach (var lote in rancho.Lotes)
+            {
+                lote.Id_Rancho = ranchoDestinoId.Value;
+            }
+
+            // Transferir animales
+            foreach (var animal in rancho.Animales)
+            {
+                animal.Id_Rancho = ranchoDestinoId.Value;
+            }
+            
+            await _context.SaveChangesAsync();
+        }
+
+        // Eliminar el rancho
+        _context.Ranchos.Remove(rancho);
+        await _context.SaveChangesAsync();
+        
+        await _actividadService.RegistrarActividadAsync(
+            tipo: "Eliminación",
+            descripcion: $"Rancho eliminado: ID {id}" + 
+                         (tieneDependencias ? $". Registros transferidos a rancho ID {ranchoDestinoId}" : ""),
+            estado: "Completado",
+            entidadId: id,
+            tipoEntidad: "Rancho"
+        );
+
+        return NoContent();
+    }
+    catch (Exception ex)
+    {
+        return StatusCode(500, new {
+            error = "Error interno al procesar la solicitud",
+            detail = ex.Message
+        });
+    }
+}
         
         [HttpGet("resumen-ganado")]
         public async Task<ActionResult<IEnumerable<ResumenGanadoDto>>> GetResumenGanadoPorRancho()

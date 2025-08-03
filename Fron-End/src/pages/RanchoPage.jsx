@@ -13,6 +13,18 @@ import {
   DialogFooter,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import RanchoForm from '@/components/Ranchos/RanchoForm';
 import * as ranchoService from '@/services/ranchoService';
 
@@ -69,6 +81,10 @@ const RanchoCard = ({ rancho, onEdit, onDelete, onView }) => {
             <span className="text-muted-foreground">Lotes:</span>
             <span className="font-semibold text-foreground">{rancho.totalLotes || 0}</span>
           </div>
+          <div className="flex items-center justify-between text-sm">
+            <span className="text-muted-foreground">Animales:</span>
+            <span className="font-semibold text-foreground">{rancho.totalAnimales || 0}</span>
+          </div>
         </CardContent>
         <CardFooter className="gap-1">
           <Button variant="ghost" size="icon" onClick={() => onView(rancho)} className="text-muted-foreground hover:text-primary">
@@ -77,7 +93,7 @@ const RanchoCard = ({ rancho, onEdit, onDelete, onView }) => {
           <Button variant="ghost" size="icon" onClick={() => onEdit(rancho)} className="text-muted-foreground hover:text-yellow-500">
             <Edit className="h-4 w-4" />
           </Button>
-          <Button variant="ghost" size="icon" onClick={() => onDelete(rancho.id_Rancho)} className="text-muted-foreground hover:text-destructive">
+          <Button variant="ghost" size="icon" onClick={() => onDelete(rancho)} className="text-muted-foreground hover:text-destructive">
             <Trash2 className="h-4 w-4" />
           </Button>
         </CardFooter>
@@ -95,6 +111,11 @@ const RanchosPage = () => {
   const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [ranchoToDelete, setRanchoToDelete] = useState(null);
+  const [destinationRanchoId, setDestinationRanchoId] = useState('');
+  const [deleteError, setDeleteError] = useState('');
+  const [showDestinationSelector, setShowDestinationSelector] = useState(false);
   
   // Usa el hook useLocalStorage para el usuario
   const [user] = useLocalStorage('user', null);
@@ -111,7 +132,8 @@ const RanchosPage = () => {
       toast({ 
         title: "Error", 
         description: error.message, 
-        variant: "destructive" 
+        variant: "destructive",
+        duration: 5000
       });
     } finally {
       setIsLoading(false);
@@ -124,7 +146,8 @@ const RanchosPage = () => {
       toast({ 
         title: "Error", 
         description: "Información de usuario no disponible", 
-        variant: "destructive" 
+        variant: "destructive",
+        duration: 5000
       });
       return;
     }
@@ -135,22 +158,22 @@ const RanchosPage = () => {
         Id_User: user.id
       });
       
-      // Actualizar lista de ranchos
+      // CORREGIDO: Typo en createdRancho
       setRanchos([...ranchos, createdRancho]);
-      
-      // Guardar ID del rancho en localStorage
       localStorage.setItem('currentRanchoId', createdRancho.id_Rancho);
       
       toast({ 
         title: "Éxito", 
-        description: "Rancho creado correctamente" 
+        description: "Rancho creado correctamente",
+        duration: 3000
       });
       setIsFormOpen(false);
     } catch (error) {
       toast({ 
         title: "Error", 
         description: error.message, 
-        variant: "destructive" 
+        variant: "destructive",
+        duration: 5000
       });
     }
   };
@@ -161,7 +184,8 @@ const RanchosPage = () => {
       toast({ 
         title: "Error", 
         description: "ID de rancho no válido", 
-        variant: "destructive" 
+        variant: "destructive",
+        duration: 5000
       });
       return;
     }
@@ -175,14 +199,14 @@ const RanchosPage = () => {
         }
       );
       
-      // Actualizar el estado local
       setRanchos(ranchos.map(r => 
         r.id_Rancho === updatedRancho.id_Rancho ? { ...r, ...updatedRancho } : r
       ));
       
       toast({ 
         title: "Éxito", 
-        description: "Rancho actualizado correctamente" 
+        description: "Rancho actualizado correctamente",
+        duration: 3000
       });
       setIsFormOpen(false);
       setEditingRancho(null);
@@ -190,37 +214,84 @@ const RanchosPage = () => {
       toast({ 
         title: "Error", 
         description: error.message, 
-        variant: "destructive" 
+        variant: "destructive",
+        duration: 5000
       });
     }
   };
 
-  // Eliminar rancho
-  const handleDeleteRancho = async (ranchoId) => {
-    if (!ranchoId) {
-      toast({ 
-        title: "Error", 
-        description: "ID de rancho no válido", 
-        variant: "destructive" 
-      });
-      return;
-    }
+  // Manejar clic en eliminar
+  const handleDeleteClick = (rancho) => {
+    setRanchoToDelete(rancho);
+    setDeleteDialogOpen(true);
+    setDeleteError('');
+    setDestinationRanchoId('');
     
-    try {
-      await ranchoService.deleteRancho(ranchoId);
-      setRanchos(ranchos.filter(r => r.id_Rancho !== ranchoId));
-      toast({ 
-        title: "Éxito", 
-        description: "Rancho eliminado correctamente" 
-      });
-    } catch (error) {
-      toast({ 
-        title: "Error", 
-        description: error.message, 
-        variant: "destructive" 
-      });
+    // Mostrar selector si el rancho tiene lotes o animales
+    if (rancho.totalLotes > 0 || rancho.totalAnimales > 0) {
+      setShowDestinationSelector(true);
+    } else {
+      setShowDestinationSelector(false);
     }
   };
+
+  // Confirmar eliminación con transferencia
+const confirmDelete = async () => {
+  if (!ranchoToDelete) return;
+  
+  try {
+    const destId = showDestinationSelector ? Number(destinationRanchoId) : null;
+    
+    await ranchoService.deleteRancho(ranchoToDelete.id_Rancho, destId);
+    
+    // Actualizar estado localmente para evitar recarga completa
+    const updatedRanchos = ranchos.filter(r => r.id_Rancho !== ranchoToDelete.id_Rancho);
+    
+    // Si hubo transferencia, actualizar el rancho destino
+    if (destId) {
+      const ranchoDestino = updatedRanchos.find(r => r.id_Rancho === destId);
+      if (ranchoDestino) {
+        // Actualizar los totales sumando los del rancho eliminado
+        const nuevoTotalLotes = (ranchoDestino.totalLotes || 0) + (ranchoToDelete.totalLotes || 0);
+        const nuevoTotalAnimales = (ranchoDestino.totalAnimales || 0) + (ranchoToDelete.totalAnimales || 0);
+        
+        // Actualizar el rancho destino en el estado
+        const updatedDestino = {
+          ...ranchoDestino,
+          totalLotes: nuevoTotalLotes,
+          totalAnimales: nuevoTotalAnimales
+        };
+        
+        setRanchos(updatedRanchos.map(r => 
+          r.id_Rancho === destId ? updatedDestino : r
+        ));
+      } else {
+        // Si no encontramos el destino, recargar todo
+        await fetchRanchos();
+      }
+    } else {
+      // Sin transferencia, solo eliminar
+      setRanchos(updatedRanchos);
+    }
+    
+    setDeleteDialogOpen(false);
+    
+    toast({
+      title: "Éxito",
+      description: destId 
+        ? `Rancho eliminado y registros transferidos`
+        : "Rancho eliminado correctamente",
+      duration: 5000
+    });
+  } catch (error) {
+    console.error("Error al eliminar rancho:", error);
+    setDeleteError(error.message);
+    
+    if (error.message.includes("asociados") || error.message.includes("Proporcione")) {
+      setShowDestinationSelector(true);
+    }
+  }
+};
 
   useEffect(() => {
     fetchRanchos();
@@ -228,6 +299,7 @@ const RanchosPage = () => {
 
   const totalRanchos = ranchos.length;
   const totalLotes = ranchos.reduce((sum, r) => sum + (r.totalLotes || 0), 0);
+  const totalAnimales = ranchos.reduce((sum, r) => sum + (r.totalAnimales || 0), 0);
 
   if (isLoading) {
     return (
@@ -304,9 +376,9 @@ const RanchosPage = () => {
             <p className="text-2xl font-bold text-green-400">{totalLotes}</p>
             <p className="text-sm text-muted-foreground">Lotes Totales</p>
           </Card>
-          <Card className="text-center p-4">
-            <p className="text-2xl font-bold text-blue-400">{user?.name || 'Usuario'}</p>
-            <p className="text-sm text-muted-foreground">Propietario</p>
+          <Card className="text-center p极">
+            <p className="text-2xl font-bold text-blue-400">{totalAnimales}</p>
+            <p className="text-sm text-muted-foreground">Animales Totales</p>
           </Card>
         </div>
       </Card>
@@ -331,7 +403,7 @@ const RanchosPage = () => {
                 setEditingRancho(r);
                 setIsFormOpen(true);
               }}
-              onDelete={handleDeleteRancho}
+              onDelete={handleDeleteClick}
               onView={(r) => {
                 setViewingRancho(r);
                 setIsViewDialogOpen(true);
@@ -366,6 +438,9 @@ const RanchosPage = () => {
                 
                 <strong>Total de Lotes:</strong> 
                 <p>{viewingRancho.totalLotes || 0}</p>
+
+                <strong>Total de Animales:</strong> 
+                <p>{viewingRancho.totalAnimales || 0}</p>
               </div>
             </div>
             <DialogFooter>
@@ -375,6 +450,81 @@ const RanchosPage = () => {
         </Dialog>
       )}
 
+      {/* Diálogo de eliminación - PARTE CLAVE */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={(open) => {
+        if (!open) {
+          setDeleteError('');
+          setShowDestinationSelector(false);
+          setDestinationRanchoId('');
+        }
+        setDeleteDialogOpen(open);
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {showDestinationSelector 
+                ? "Transferir registros antes de eliminar" 
+                : "Confirmar eliminación"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteError || `¿Estás seguro que deseas eliminar el rancho "${ranchoToDelete?.nombreRancho}"?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          
+          {/* Selector de destino - se muestra cuando es necesario */}
+          {showDestinationSelector && (
+            <div className="grid gap-4 py-4">
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="destination">
+                  Rancho Destino para transferencia:
+                </Label>
+                <Select 
+                  value={destinationRanchoId} 
+                  onValueChange={setDestinationRanchoId}
+                >
+                  <SelectTrigger className="w-full h-12 px-4 text-base">
+                    <SelectValue placeholder="Selecciona un rancho destino" />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-60 w-[var(--radix-select-trigger-width)]">
+                    {ranchos
+                      .filter(r => r.id_Rancho !== ranchoToDelete?.id_Rancho)
+                      .map(rancho => (
+                        <SelectItem 
+                          key={rancho.id_Rancho} 
+                          value={String(rancho.id_Rancho)}
+                          className="text-base py-3"
+                        >
+                          <div className="flex flex-col">
+                            <span>{rancho.nombreRancho}</span>
+                            <span className="text-xs text-muted-foreground">
+                              ID: {rancho.id_Rancho} | Lotes: {rancho.totalLotes} | Animales: {rancho.totalAnimales}
+                            </span>
+                          </div>
+                        </SelectItem>
+                      ))
+                    }
+                  </SelectContent>
+                </Select>
+                {!destinationRanchoId && (
+                  <p className="text-sm text-destructive mt-1">
+                    Selecciona un rancho destino para transferir los registros
+                  </p>
+                )}
+              </div>
+            </div>
+          )}
+          
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={confirmDelete}
+              disabled={showDestinationSelector && !destinationRanchoId}
+            >
+              {showDestinationSelector ? "Confirmar y Transferir" : "Confirmar Eliminación"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </motion.div>
   );
 };
