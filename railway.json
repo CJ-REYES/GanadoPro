@@ -1,0 +1,10 @@
+{
+  "build": {
+    "backend": {
+      "root": "GanadoProBackEnd"
+    },
+    "frontend": {
+      "root": "Fron-End"
+    }
+  }
+}
